@@ -1,0 +1,16 @@
+# Конфиг для автосортировки файлов
+# Категории: Documents, Images, Archives, Media, Invoices, Projects, Others
+# Можно задать путь для каждой категории
+categories:
+  Study: ~/Downloads/Study
+  Documents: ~/Downloads/Documents
+  Images: ~/Downloads/Images
+  Archives: ~/Downloads/Archives
+  Media: ~/Downloads/Media
+  Invoices: ~/Downloads/Invoices
+  Projects: ~/Downloads/Projects
+  Presentations: ~/Downloads/Presentations
+  Others: ~/Downloads/Others
+
+# Можно задать путь по умолчанию для неизвестных категорий
+unknown: ~/Downloads/Others

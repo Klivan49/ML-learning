@@ -1,0 +1,11 @@
+watchdog
+scikit-learn
+joblib
+PyYAML
+pytest
+tqdm
+pdfminer.six
+python-magic
+# Опционально для нейросети и веб-интерфейса
+torch
+fastapi
