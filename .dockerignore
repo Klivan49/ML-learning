@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pkl
+*.joblib
+.git/
+.gitignore
+synthetic_data/
+data/processed/*.csv
+models/*.pkl
+venv/
+.venv/
+.vscode/
+.idea/

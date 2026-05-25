@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pkl
+*.joblib
+synthetic_data/
+sorted_test/
+data/processed/*.csv
+data/raw/
+.vscode/
+.idea/
+.DS_Store
+*.egg-info/
+dist/
+build/
