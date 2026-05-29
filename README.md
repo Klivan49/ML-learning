@@ -14,27 +14,21 @@ file_sorter/
 ├── data/
 │   ├── raw/                     # Реальные файлы (не отсортированные)
 │   └── processed/               # Готовые датасеты (.csv)
+├── scripts/
+│   ├── generate_dataset.py      # CLI: генерация датасета
+│   ├── train_model.py           # CLI: обучение модели
+│   ├── sort_files.py            # CLI: сортировка файлов
+│   └── gui.py                   # GUI (ttkbootstrap)
 ├── src/
 │   ├── features/features.py     # Извлечение признаков из файлов
 │   ├── data_prep/dataset.py     # Сбор реальных / генерация синтетических данных
 │   ├── models/model.py          # Определение sklearn-пайплайнов
 │   ├── models/train.py          # Train/val/test, обучение, оценка, сохранение
 │   └── inference/predict.py     # Загрузка модели, предсказание, сортировка
-├── scripts/
-│   ├── generate_dataset.py      # CLI для генерации датасета
-│   ├── train_model.py           # CLI для обучения
-│   ├── sort_files.py            # CLI для сортировки
-│   ├── gui.py                   # GUI (ttkbootstrap)
-│   ├── build_exe.py             # Сборка exe (Windows) / standalone (Linux)
-│   ├── build_linux.sh           # Сборка под Linux
-│   ├── build_windows.bat        # Сборка под Windows
-│   ├── *.bat                    # Запуск на Windows
 ├── models/                      # Сохранённые модели (.pkl)
 ├── synthetic_data/              # Временные синтетические файлы
-├── Dockerfile                   # Контейнер (GUI через X11)
-├── docker-compose.yml           # Docker Compose
-├── .dockerignore
 ├── requirements.txt
+├── gui.sh                       # Linux-лаунчер (auto-venv)
 └── README.md
 ```
 
@@ -78,7 +72,42 @@ pip install -r requirements.txt
 > **Примечание:** для GUI требуется `ttkbootstrap`. Он ставится автоматически из `requirements.txt`.
 > Если tkinter не установлен — на Ubuntu/deb: `sudo apt install python3-tk`, на Arch: `sudo pacman -S tk`.
 
-## Использование
+## Использование (GUI)
+
+```bash
+# Установка зависимостей
+pip install -r requirements.txt
+
+# Запуск
+python scripts/gui.py
+
+# Или через лаунчер (авто-venv)
+./gui.sh
+```
+
+### Вкладки GUI
+
+| Вкладка | Назначение |
+|---|---|
+| **Sort** | Выбор модели, входной/выходной директорий, фильтры, сортировка |
+| **Dataset** | Генерация датасета: real (из каталога) или synthetic (N примеров) |
+| **Train** | Обучение одной или нескольких моделей, таблица метрик |
+| **Config** | Редактирование категорий, расширений и keywords |
+| **About** | Информация о проекте |
+
+### Workflow
+
+1. **Dataset** → создать датасет (синтетический или из реальных файлов)
+2. **Train** → обучить модель(и) на датасете
+3. **Sort** → выбрать модель и отсортировать файлы
+4. **Config** → настроить категории под свои задачи
+
+Файлы перемещаются в `<output>/<predicted_class>/<filename>`. При совпадении имён добавляется суффикс `_1`, `_2` и т.д.
+
+Доступные темы (меняются в `gui.py`, строка `tb.Window(themename=...)`):
+`darkly`, `superhero`, `flatly`, `lumen`, `solar`, `cyborg`, `vapor`.
+
+## Использование (CLI)
 
 ### 1. Генерация датасета
 
@@ -103,22 +132,6 @@ python scripts/train_model.py --data data/processed/dataset.csv \
 
 На выходе — `.pkl` файлы в `models/` и сводка метрик по test-выборке.
 
-### 2b. Education profile
-
-```bash
-# Генерация датасета учебных файлов
-python scripts/generate_dataset.py --profile education --synthetic 2000 --output data/processed/dataset_edu.csv
-
-# Обучение модели для учебных файлов
-python scripts/train_model.py --profile education --data data/processed/dataset_edu.csv
-
-# Сортировка учебных файлов
-python scripts/sort_files.py --profile education --model models/gradient_boosting.pkl --input ~/Studies --output ~/SortedStudies
-```
-
-Категории: лекции, лабораторные, пз, курсовые, методички, математика, физика,
-программирование, информатика, химия.
-
 ### 3. Сортировка
 
 ```bash
@@ -135,29 +148,16 @@ python scripts/sort_files.py --model models/random_forest.pkl \
     --input ~/Downloads --output ~/Sorted --dry-run
 ```
 
-Файлы перемещаются в `<output>/<predicted_class>/<filename>`. При совпадении имён добавляется суффикс `_1`, `_2` и т.д.
-
-### 4. GUI
+### Education profile
 
 ```bash
-python scripts/gui.py
+python scripts/generate_dataset.py --profile education --synthetic 2000 --output data/processed/dataset_edu.csv
+python scripts/train_model.py --profile education --data data/processed/dataset_edu.csv
+python scripts/sort_files.py --profile education --model models/gradient_boosting.pkl --input ~/Studies --output ~/SortedStudies
 ```
 
-Доступные темы (меняются в `gui.py`, строка `tb.Window(themename=...)`):
-`darkly`, `superhero`, `flatly`, `lumen`, `solar`, `cyborg`, `vapor`.
-
-**Windows:**
-```
-scripts\gui.bat
-```
-
-GUI поддерживает:
-- Выбор модели, входа, выхода
-- Переключение профиля (general / education)
-- Фильтры по размеру и расширениям
-- Dry-run / Copy / Recursive
-- Редактирование категорий, расширений и keywords (вкладка Config)
-- Лог в реальном времени
+Категории: лекции, лабораторные, пз, курсовые, методички, математика, физика,
+программирование, информатика, химия.
 
 ## Категории
 
@@ -170,44 +170,7 @@ GUI поддерживает:
 | media | mp3, wav, flac, mp4, avi, mkv | audio_, video_, recording, track_ |
 | other | bin, dat, tmp, log, bak | misc_, temp_, untitled |
 
-## Сборка standalone / Docker
 
-### Docker
-
-```bash
-# Сборка
-docker compose build
-
-# GUI (нужен X-сервер)
-docker compose up file-sorter
-
-# CLI сортировка
-INPUT_DIR=~/Downloads OUTPUT_DIR=~/Sorted docker compose run --rm file-sorter-cli \
-  --model models/random_forest.pkl --input /app/input --output /app/output
-
-# Генерация датасета
-docker compose run --rm file-sorter \
-  python scripts/generate_dataset.py --synthetic 5000
-```
-
-### Windows (.exe)
-
-```cmd
-scripts\build_windows.bat
-```
-Готовые `.exe` в папке `dist/`:
-- `FileSorter.exe` — GUI
-- `sort-files.exe` — CLI сортировка
-- `train-model.exe` — обучение
-- `generate-dataset.exe` — генерация
-
-### Linux (standalone)
-
-```bash
-chmod +x scripts/build_linux.sh
-./scripts/build_linux.sh
-```
-Бинарники в `dist/`, запускать без Python.
 
 ## Развитие
 

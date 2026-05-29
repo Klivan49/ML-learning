@@ -8,9 +8,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from configs.config import CONFIG
 from src.inference.predict import FileClassifier
+from src.data_prep.dataset import build_real_dataset, build_synthetic_dataset
+from src.models.train import train_and_evaluate
+from src.models.model import MODEL_REGISTRY
 
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, ttk
 
 try:
     import ttkbootstrap as tb
@@ -30,11 +33,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 class FileSorterGUI:
     def __init__(self):
         self.root = tb.Window(themename="darkly") if THEMED else tk.Tk()
-        self.root.title("File Sorter")
-        self.root.geometry("900x620+100+100")
-        self.root.minsize(800, 600)
-
         self.root.title("\U0001F4C2  File Sorter — ML Classification")
+        self.root.geometry("950x700+100+100")
+        self.root.minsize(850, 650)
 
         self._model_path = tb.StringVar(value=os.path.join(ROOT, "models/random_forest.pkl"))
         self._input_path = tb.StringVar()
@@ -46,6 +47,16 @@ class FileSorterGUI:
         self._min_size = tb.StringVar(value="0")
         self._max_size = tb.StringVar(value="0")
         self._extension_var = tb.StringVar()
+
+        self._ds_mode = tb.StringVar(value="real")
+        self._ds_input_dir = tb.StringVar()
+        self._ds_output_csv = tb.StringVar(value="data/processed/dataset.csv")
+        self._ds_synthetic_count = tb.IntVar(value=2000)
+        self._ds_seed = tb.IntVar(value=42)
+
+        self._tr_csv_path = tb.StringVar(value="data/processed/dataset.csv")
+        self._tr_output_dir = tb.StringVar(value="models")
+        self._tr_models = {name: tb.BooleanVar(value=True) for name in MODEL_REGISTRY}
 
         self._log_lock = threading.Lock()
         self._running = False
@@ -71,9 +82,11 @@ class FileSorterGUI:
         tb.Label(self._navbar, text="File Sorter", font=("Segoe UI", 14, "bold")).pack(anchor=W, pady=(0, 20))
 
         pages = [
-            ("sort",   "\U0001F500", "Sort"),
-            ("config", "\U00002699", "Config"),
-            ("about",  "\U00002139", "About"),
+            ("sort",    "\U0001F500", "Sort"),
+            ("dataset", "\U0001F4CA", "Dataset"),
+            ("train",   "\U00002699", "Train"),
+            ("config",  "\U0001F6E0", "Config"),
+            ("about",   "\U00002139", "About"),
         ]
         for name, icon, label in pages:
             btn = tb.Button(self._navbar, text=f"{icon}  {label}", style="nav.TButton",
@@ -81,7 +94,6 @@ class FileSorterGUI:
             btn.pack(fill=X, pady=2)
             self._nav_buttons[name] = btn
 
-        style_name = "nav.TButton"
         if THEMED:
             self.root.style.configure("nav.TButton", font=("Segoe UI", 11), padding=8, anchor=W, borderwidth=0)
             self.root.style.configure("nav-active.TButton", font=("Segoe UI", 11, "bold"), padding=8, anchor=W)
@@ -99,30 +111,33 @@ class FileSorterGUI:
         self._container = tb.Frame(outer)
         self._container.pack(side=RIGHT, fill=BOTH, expand=True, padx=(0, 0), pady=(0, 0))
 
-        self._sort_frame = tb.Frame(self._container)
-        self._config_frame = tb.Frame(self._container)
-        self._about_frame = tb.Frame(self._container)
+        frames = ["sort", "dataset", "train", "config", "about"]
+        self._frames = {name: tb.Frame(self._container) for name in frames}
         self._log_frame = tb.LabelFrame(self._container, text="Log")
 
         self._build_sort_tab()
+        self._build_dataset_tab()
+        self._build_train_tab()
         self._build_config_tab()
         self._build_about_tab()
         self._build_log()
 
+    # ============================================================ SORT TAB
     def _build_sort_tab(self):
+        f = self._frames["sort"]
         for i, (txt, w) in enumerate([
             ("Model",  self._model_path),
             ("Input",  self._input_path),
             ("Output", self._output_path),
         ]):
-            row = tb.Frame(self._sort_frame)
+            row = tb.Frame(f)
             row.pack(fill=X, pady=4)
             tb.Label(row, text=txt, width=7, anchor=E).pack(side=LEFT, padx=(0, 8))
             entry = tb.Entry(row, textvariable=w)
             entry.pack(side=LEFT, fill=X, expand=True, padx=(0, 6))
-            tb.Button(row, text="Browse", command=lambda t=txt: self._browse(t), width=8).pack(side=LEFT)
+            tb.Button(row, text="Browse", command=lambda t=txt: self._browse_sort(t), width=8).pack(side=LEFT)
 
-        opt_frame = tb.LabelFrame(self._sort_frame, text="Options")
+        opt_frame = tb.LabelFrame(f, text="Options")
         opt_frame.pack(fill=X, pady=(8, 0))
 
         row1 = tb.Frame(opt_frame)
@@ -137,7 +152,7 @@ class FileSorterGUI:
         profile_combo.pack(side=LEFT)
         self._profile.trace_add("write", lambda *_: self._rebuild_config_tab())
 
-        flt_frame = tb.LabelFrame(self._sort_frame, text="Filters")
+        flt_frame = tb.LabelFrame(f, text="Filters")
         flt_frame.pack(fill=X, pady=(8, 0))
 
         row2 = tb.Frame(flt_frame)
@@ -150,21 +165,123 @@ class FileSorterGUI:
         tb.Entry(row2, textvariable=self._extension_var, width=20).pack(side=LEFT, fill=X, expand=True, padx=4)
         tb.Label(row2, text="space-sep", font=("", 8)).pack(side=LEFT)
 
-        btn_frame = tb.Frame(self._sort_frame)
+        btn_frame = tb.Frame(f)
         btn_frame.pack(fill=X, pady=(14, 0))
         tb.Button(btn_frame, text="\u25B6  Run Sort", bootstyle="success", command=self._run_sort, width=18).pack(side=LEFT, padx=(0, 6))
         tb.Button(btn_frame, text="\u23F9  Stop",     bootstyle="secondary", command=self._stop_sort, width=12).pack(side=LEFT)
 
+    # ============================================================ DATASET TAB
+    def _build_dataset_tab(self):
+        f = self._frames["dataset"]
+
+        mode_frame = tb.LabelFrame(f, text="Generation Mode")
+        mode_frame.pack(fill=X, pady=(0, 8))
+
+        rb_frame = tb.Frame(mode_frame)
+        rb_frame.pack(fill=X, pady=4)
+        tb.Radiobutton(rb_frame, text="Real (from directory)", variable=self._ds_mode, value="real",
+                       command=self._toggle_ds_mode).pack(side=LEFT, padx=(0, 20))
+        tb.Radiobutton(rb_frame, text="Synthetic", variable=self._ds_mode, value="synthetic",
+                       command=self._toggle_ds_mode).pack(side=LEFT)
+
+        self._ds_real_frame = tb.Frame(mode_frame)
+        self._ds_real_frame.pack(fill=X, pady=4)
+        tb.Label(self._ds_real_frame, text="Input dir:", width=10, anchor=E).pack(side=LEFT, padx=(0, 8))
+        tb.Entry(self._ds_real_frame, textvariable=self._ds_input_dir).pack(side=LEFT, fill=X, expand=True, padx=(0, 6))
+        tb.Button(self._ds_real_frame, text="Browse", command=lambda: self._browse_ds("input"), width=8).pack(side=LEFT)
+
+        self._ds_syn_frame = tb.Frame(mode_frame)
+        row = tb.Frame(self._ds_syn_frame)
+        row.pack(fill=X, pady=2)
+        tb.Label(row, text="Samples:", width=10, anchor=E).pack(side=LEFT, padx=(0, 8))
+        tb.Spinbox(row, from_=100, to=100000, textvariable=self._ds_synthetic_count, width=10).pack(side=LEFT, padx=(0, 20))
+        tb.Label(row, text="Seed:", anchor=E).pack(side=LEFT, padx=(0, 4))
+        tb.Entry(row, textvariable=self._ds_seed, width=8).pack(side=LEFT)
+
+        out_frame = tb.Frame(f)
+        out_frame.pack(fill=X, pady=4)
+        tb.Label(out_frame, text="Output CSV:", width=10, anchor=E).pack(side=LEFT, padx=(0, 8))
+        tb.Entry(out_frame, textvariable=self._ds_output_csv).pack(side=LEFT, fill=X, expand=True, padx=(0, 6))
+        tb.Button(out_frame, text="Browse", command=lambda: self._browse_ds("output"), width=8).pack(side=LEFT)
+
+        btn_frame = tb.Frame(f)
+        btn_frame.pack(fill=X, pady=(14, 0))
+        tb.Button(btn_frame, text="\U0001F4CA  Generate Dataset", bootstyle="success",
+                  command=self._run_generate_dataset, width=22).pack(side=LEFT)
+
+        self._toggle_ds_mode()
+
+    def _toggle_ds_mode(self):
+        mode = self._ds_mode.get()
+        self._ds_real_frame.pack_forget()
+        self._ds_syn_frame.pack_forget()
+        if mode == "real":
+            self._ds_real_frame.pack(fill=X, pady=4)
+        else:
+            self._ds_syn_frame.pack(fill=X, pady=4)
+
+    # ============================================================ TRAIN TAB
+    def _build_train_tab(self):
+        f = self._frames["train"]
+
+        row0 = tb.Frame(f)
+        row0.pack(fill=X, pady=4)
+        tb.Label(row0, text="Dataset CSV:", width=12, anchor=E).pack(side=LEFT, padx=(0, 8))
+        tb.Entry(row0, textvariable=self._tr_csv_path).pack(side=LEFT, fill=X, expand=True, padx=(0, 6))
+        tb.Button(row0, text="Browse", command=lambda: self._browse("tr_csv"), width=8).pack(side=LEFT)
+
+        model_frame = tb.LabelFrame(f, text="Models")
+        model_frame.pack(fill=X, pady=8)
+        row_m = tb.Frame(model_frame)
+        row_m.pack(fill=X, pady=4)
+        names = {
+            "logistic_regression": "Logistic Regression",
+            "random_forest": "Random Forest",
+            "gradient_boosting": "Gradient Boosting",
+        }
+        for key, label in names.items():
+            tb.Checkbutton(row_m, text=label, variable=self._tr_models[key],
+                           bootstyle="round-toggle").pack(side=LEFT, padx=6)
+
+        row1 = tb.Frame(f)
+        row1.pack(fill=X, pady=4)
+        tb.Label(row1, text="Output dir:", width=12, anchor=E).pack(side=LEFT, padx=(0, 8))
+        tb.Entry(row1, textvariable=self._tr_output_dir).pack(side=LEFT, fill=X, expand=True, padx=(0, 6))
+        tb.Button(row1, text="Browse", command=lambda: self._browse("tr_out"), width=8).pack(side=LEFT)
+
+        btn_frame = tb.Frame(f)
+        btn_frame.pack(fill=X, pady=(14, 0))
+        tb.Button(btn_frame, text="\u25B6  Train Models", bootstyle="success",
+                  command=self._run_train_model, width=22).pack(side=LEFT)
+
+        results_frame = tb.LabelFrame(f, text="Results")
+        results_frame.pack(fill=BOTH, expand=True, pady=(8, 0))
+
+        columns = ("model", "val_f1", "test_f1", "test_acc", "path")
+        self._tr_tree = ttk.Treeview(results_frame, columns=columns, show="headings", height=6)
+        self._tr_tree.heading("model", text="Model")
+        self._tr_tree.heading("val_f1", text="Val F1")
+        self._tr_tree.heading("test_f1", text="Test F1")
+        self._tr_tree.heading("test_acc", text="Test Acc")
+        self._tr_tree.heading("path", text="Model Path")
+        self._tr_tree.column("model", width=180)
+        self._tr_tree.column("val_f1", width=80)
+        self._tr_tree.column("test_f1", width=80)
+        self._tr_tree.column("test_acc", width=80)
+        self._tr_tree.column("path", width=250)
+        self._tr_tree.pack(fill=BOTH, expand=True)
+
+    # ============================================================ CONFIG TAB
     def _build_config_tab(self):
-        self._config_canvas = tb.Canvas(self._config_frame, borderwidth=0, highlightthickness=0)
-        self._config_scrollbar = tb.Scrollbar(self._config_frame, orient=VERTICAL, command=self._config_canvas.yview)
+        f = self._frames["config"]
+        self._config_canvas = tb.Canvas(f, borderwidth=0, highlightthickness=0)
+        self._config_scrollbar = tb.Scrollbar(f, orient=VERTICAL, command=self._config_canvas.yview)
         self._config_inner = tb.Frame(self._config_canvas)
         self._config_inner.bind("<Configure>", lambda e: self._config_canvas.configure(scrollregion=self._config_canvas.bbox("all")))
         self._config_canvas.create_window((0, 0), window=self._config_inner, anchor=NW)
         self._config_canvas.configure(yscrollcommand=self._config_scrollbar.set)
         self._config_canvas.pack(side=LEFT, fill=BOTH, expand=True)
         self._config_scrollbar.pack(side=RIGHT, fill=Y)
-
         self._populate_config()
 
     def _rebuild_config_tab(self):
@@ -181,45 +298,47 @@ class FileSorterGUI:
             card = tb.LabelFrame(self._config_inner, text=f"  {cat}  ")
             card.grid(row=i, column=0, sticky=EW, pady=4, padx=2)
             self._config_inner.columnconfigure(0, weight=1)
-
             exts = ", ".join(CONFIG.extension_to_category.get(cat, []))
-            kws  = ", ".join(CONFIG.category_keywords.get(cat, []))
-
+            kws = ", ".join(CONFIG.category_keywords.get(cat, []))
             tb.Label(card, text="Extensions:", font=("", 9, "bold")).grid(row=0, column=0, sticky=NW, padx=(0, 4))
             e_text = tb.Text(card, height=2, wrap=WORD, width=55)
             e_text.insert(END, exts)
             e_text.grid(row=0, column=1, sticky=EW, pady=1)
             card.columnconfigure(1, weight=1)
-
             tb.Label(card, text="Keywords:", font=("", 9, "bold")).grid(row=1, column=0, sticky=NW, padx=(0, 4))
             k_text = tb.Text(card, height=2, wrap=WORD, width=55)
             k_text.insert(END, kws)
             k_text.grid(row=1, column=1, sticky=EW, pady=1)
-
             self._config_widgets[cat] = (e_text, k_text)
-
         btn_row = tb.Frame(self._config_inner)
         btn_row.grid(row=len(CONFIG.target_columns), column=0, pady=12)
         tb.Button(btn_row, text="\U0001F4BE  Save", bootstyle="success", command=self._save_config).pack(side=LEFT, padx=3)
-        tb.Button(btn_row, text="\u21BA  Reload",  bootstyle="secondary", command=self._reload_config).pack(side=LEFT, padx=3)
+        tb.Button(btn_row, text="\u21BA  Reload", bootstyle="secondary", command=self._reload_config).pack(side=LEFT, padx=3)
 
+    # ============================================================ ABOUT TAB
     def _build_about_tab(self):
-        c = (
+        txt = (
             "\U0001F4C2  File Sorter — ML File Classification\n\n"
             "Categories: " + ", ".join(CONFIG.target_columns) + "\n"
             "Models: Logistic Regression, Random Forest, Gradient Boosting\n"
             f"Features: 48 (filename, size, extension, magic bytes, text stats)\n\n"
-            "Workflow:\n"
-            "  1. scripts/generate_dataset.py  — create dataset\n"
-            "  2. scripts/train_model.py        — train model\n"
-            "  3. scripts/sort_files.py         — CLI sorting\n"
-            "  4. python scripts/gui.py         — this GUI\n"
+            "GUI Workflow:\n"
+            "  1. Dataset tab  — create dataset (real files or synthetic)\n"
+            "  2. Train tab    — train one or more models\n"
+            "  3. Sort tab     — select model & sort files\n"
+            "  4. Config tab   — customize categories & keywords\n\n"
+            "CLI also available:\n"
+            "  python scripts/generate_dataset.py --help\n"
+            "  python scripts/train_model.py --help\n"
+            "  python scripts/sort_files.py --help\n\n"
+            "Launch GUI: python scripts/gui.py  or  ./gui.sh\n"
         )
-        text = tb.Text(self._about_frame, wrap=WORD, font=("Segoe UI", 11), padx=15, pady=15, state=NORMAL)
-        text.insert(END, c)
+        text = tb.Text(self._frames["about"], wrap=WORD, font=("Segoe UI", 11), padx=15, pady=15, state=NORMAL)
+        text.insert(END, txt)
         text.configure(state=DISABLED)
         text.pack(fill=BOTH, expand=True)
 
+    # ============================================================ LOG
     def _build_log(self):
         self._log_frame.pack(fill=BOTH, expand=True)
         st = ScrolledText(self._log_frame, height=8, wrap=WORD,
@@ -229,32 +348,53 @@ class FileSorterGUI:
         self._log_text = st
 
     def _show_page(self, name):
-        for f in (self._sort_frame, self._config_frame, self._about_frame, self._log_frame):
-            f.pack_forget()
+        for frame in self._frames.values():
+            frame.pack_forget()
         self._log_frame.pack(fill=BOTH, expand=True, pady=(10, 0))
-        if name == "sort":
-            self._sort_frame.pack(fill=BOTH, expand=False)
-        elif name == "config":
-            self._config_frame.pack(fill=BOTH, expand=True)
-        elif name == "about":
-            self._about_frame.pack(fill=BOTH, expand=True)
+        self._frames[name].pack(fill=BOTH, expand=(name in ("train", "config", "about")))
 
-    def _browse(self, target):
+    # ============================================================ BROWSE
+    def _browse_sort(self, target):
         if target == "Model":
             p = filedialog.askopenfilename(title="Select model", filetypes=[("PKL", "*.pkl"), ("All", "*.*")])
+            if p:
+                self._model_path.set(p)
         elif target == "Input":
             p = filedialog.askdirectory(title="Select input directory")
+            if p:
+                self._input_path.set(p)
         else:
             p = filedialog.askdirectory(title="Select output directory")
-        if p:
-            vars = {"Model": self._model_path, "Input": self._input_path, "Output": self._output_path}
-            vars[target].set(p)
+            if p:
+                self._output_path.set(p)
 
+    def _browse_ds(self, target):
+        if target == "input":
+            p = filedialog.askdirectory(title="Select input directory")
+            if p:
+                self._ds_input_dir.set(p)
+        else:
+            p = filedialog.asksaveasfilename(title="Output CSV", defaultextension=".csv",
+                                             filetypes=[("CSV", "*.csv")])
+            if p:
+                self._ds_output_csv.set(p)
+
+    def _browse(self, target):
+        if target == "tr_csv":
+            p = filedialog.askopenfilename(title="Select dataset", filetypes=[("CSV", "*.csv")])
+            if p:
+                self._tr_csv_path.set(p)
+        elif target == "tr_out":
+            p = filedialog.askdirectory(title="Models output directory")
+            if p:
+                self._tr_output_dir.set(p)
+
+    # ============================================================ CONFIG SAVE/RELOAD
     def _save_config(self):
         try:
             for cat, (e_w, k_w) in self._config_widgets.items():
                 exts = [x.strip().lower() for x in e_w.get("1.0", END).strip().split(",") if x.strip()]
-                kws  = [x.strip().lower() for x in k_w.get("1.0", END).strip().split(",") if x.strip()]
+                kws = [x.strip().lower() for x in k_w.get("1.0", END).strip().split(",") if x.strip()]
                 CONFIG.extension_to_category[cat] = exts
                 CONFIG.category_keywords[cat] = kws
             Messagebox.show_info("Configuration saved (runtime). Restart to persist.", "Saved", parent=self.root)
@@ -267,6 +407,7 @@ class FileSorterGUI:
                 w.delete("1.0", END)
                 w.insert(END, ", ".join(src.get(cat, [])))
 
+    # ============================================================ LOG
     def _log(self, msg):
         with self._log_lock:
             txt = self._log_text.text
@@ -276,6 +417,7 @@ class FileSorterGUI:
             txt.configure(state=DISABLED)
             self.root.update_idletasks()
 
+    # ============================================================ SORT
     def _run_sort(self):
         if self._running:
             return
@@ -285,7 +427,7 @@ class FileSorterGUI:
 
         if not os.path.isfile(mp):
             Messagebox.show_error(f"Model not found:\n{mp}", "Error", parent=self.root)
-
+            return
         if not os.path.exists(ip):
             Messagebox.show_error(f"Input not found:\n{ip}", "Error", parent=self.root)
             return
@@ -303,19 +445,18 @@ class FileSorterGUI:
         if self._extension_var.get().strip():
             ext_filter = [e.strip().lower().lstrip(".") for e in self._extension_var.get().strip().split()]
 
-        profile = self._profile.get()
-        CONFIG.profile = profile
+        CONFIG.profile = self._profile.get()
         CONFIG._apply_profile()
 
         self._running = True
-        self._status_label.configure(text="Running...")
+        self._status_label.configure(text="Sorting...")
         self._progress.start(10)
 
         self._log("\u2500" * 55)
         self._log(f"Model:   {mp}")
         self._log(f"Input:   {ip}")
         self._log(f"Output:  {op}")
-        self._log(f"Profile: {profile}")
+        self._log(f"Profile: {CONFIG.profile}")
         self._log(f"Filters: min={mn}, max={mx}, ext={ext_filter or 'all'}")
         self._log(f"Mode:    {'copy' if self._copy_mode.get() else 'move'} | "
                   f"{'dry-run' if self._dry_run.get() else 'live'} | "
@@ -368,9 +509,129 @@ class FileSorterGUI:
         self._log("Stop requested (after current file)")
         self._running = False
 
+    # ============================================================ DATASET GENERATION
+    def _run_generate_dataset(self):
+        if self._running:
+            return
+        CONFIG.profile = self._profile.get()
+        CONFIG._apply_profile()
+
+        output_csv = self._ds_output_csv.get().strip()
+        if not output_csv:
+            Messagebox.show_error("Output CSV path required", "Error", parent=self.root)
+            return
+
+        self._running = True
+        self._status_label.configure(text="Generating dataset...")
+        self._progress.start(10)
+
+        self._log("\u2500" * 55)
+        self._log(f"Profile: {CONFIG.profile}")
+
+        if self._ds_mode.get() == "real":
+            input_dir = self._ds_input_dir.get().strip()
+            if not input_dir or not os.path.isdir(input_dir):
+                Messagebox.show_error("Valid input directory required", "Error", parent=self.root)
+                self._running = False
+                return
+            self._log(f"Mode: real | Input: {input_dir}")
+            self._log(f"Output: {output_csv}")
+            self._log("Extracting features from real files\u2026")
+
+            def task():
+                try:
+                    df = build_real_dataset(input_dir, output_csv)
+                    self._log(f"Done: {len(df)} samples, {len(df.columns)} columns")
+                    dist = df["target_class"].value_counts().to_string()
+                    self._log(f"Class distribution:\n{dist}")
+                except Exception as e:
+                    self._log(f"ERROR: {e}")
+                finally:
+                    self._running = False
+                    self.root.after(0, self._on_done)
+
+            threading.Thread(target=task, daemon=True).start()
+        else:
+            count = self._ds_synthetic_count.get()
+            seed = self._ds_seed.get()
+            self._log(f"Mode: synthetic | Samples: {count} | Seed: {seed}")
+            self._log(f"Output: {output_csv}")
+            self._log("Generating synthetic dataset\u2026")
+
+            def task():
+                try:
+                    df = build_synthetic_dataset(count, output_csv, synthetic_dir="synthetic_data", seed=seed)
+                    self._log(f"Done: {len(df)} samples, {len(df.columns)} columns")
+                    dist = df["target_class"].value_counts().to_string()
+                    self._log(f"Class distribution:\n{dist}")
+                except Exception as e:
+                    self._log(f"ERROR: {e}")
+                finally:
+                    self._running = False
+                    self.root.after(0, self._on_done)
+
+            threading.Thread(target=task, daemon=True).start()
+
+    # ============================================================ MODEL TRAINING
+    def _run_train_model(self):
+        if self._running:
+            return
+        csv_path = self._tr_csv_path.get().strip()
+        output_dir = self._tr_output_dir.get().strip()
+
+        if not os.path.isfile(csv_path):
+            Messagebox.show_error(f"Dataset not found:\n{csv_path}", "Error", parent=self.root)
+            return
+
+        models_to_train = [name for name, var in self._tr_models.items() if var.get()]
+        if not models_to_train:
+            Messagebox.show_error("Select at least one model", "Error", parent=self.root)
+            return
+
+        CONFIG.profile = self._profile.get()
+        CONFIG._apply_profile()
+
+        self._running = True
+        self._status_label.configure(text="Training...")
+        self._progress.start(10)
+
+        for row in self._tr_tree.get_children():
+            self._tr_tree.delete(row)
+
+        self._log("\u2500" * 55)
+        self._log(f"Dataset: {csv_path}")
+        self._log(f"Models: {', '.join(models_to_train)}")
+        self._log(f"Output: {output_dir}")
+        self._log(f"Profile: {CONFIG.profile}")
+        self._log("Training\u2026")
+
+        def task():
+            try:
+                results = train_and_evaluate(csv_path, models_to_train, output_dir)
+                for name, res in results.items():
+                    vf = res["val"]["f1_macro"]
+                    tf = res["test"]["f1_macro"]
+                    ta = res["test"]["accuracy"]
+                    path = res["model_path"]
+                    self._log(f"{name}: Val F1={vf:.4f}, Test F1={tf:.4f}, Test Acc={ta:.4f}")
+                    self.root.after(0, lambda n=name, v=vf, t=tf, a=ta, p=path: self._tr_tree.insert(
+                        "", END, values=(n, f"{v:.4f}", f"{t:.4f}", f"{a:.4f}", p)))
+                best = max(results, key=lambda k: results[k]["test"]["f1_macro"])
+                self._log(f"\nBest model: {best}")
+            except Exception as e:
+                self._log(f"ERROR: {e}")
+                import traceback
+                self._log(traceback.format_exc())
+            finally:
+                self._running = False
+                self.root.after(0, self._on_done)
+
+        threading.Thread(target=task, daemon=True).start()
+
+    # ============================================================ CLOSE
     def _on_close(self):
         if self._running:
-            if not Messagebox.yesno("Sorting in progress. Quit anyway?", "Running", parent=self.root):
+            if not Messagebox.yesno("Operation in progress. Quit anyway?", "Running", parent=self.root):
                 return
         self.root.destroy()
 
