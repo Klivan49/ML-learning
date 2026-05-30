@@ -3,7 +3,16 @@ import joblib
 import pandas as pd
 from typing import Dict, List, Optional, Tuple
 
-from src.features.features import extract_all_features, get_feature_columns
+from src.features.features import extract_all_features, get_feature_columns, detect_content_type
+from configs.config import CONFIG
+
+EDU_FOLDER_MAP = {
+    "лабораторные": "Лабораторные",
+    "практические": "Практические",
+    "методички": "Методички",
+    "курсовые": "Курсовые",
+    "код": "Код",
+}
 
 
 class FileClassifier:
@@ -17,6 +26,27 @@ class FileClassifier:
         probs = self.model.predict_proba(feature_vector)[0]
         prob_dict = dict(zip(self.model.classes_, probs))
         return pred, prob_dict
+
+    def predict_file_verbose(self, file_path: str) -> Tuple[str, Dict[str, float], str, str, bool]:
+        feats = extract_all_features(file_path)
+        feature_vector = self._feats_to_df(feats)
+        pred = self.model.predict(feature_vector)[0]
+        probs = self.model.predict_proba(feature_vector)[0]
+        prob_dict = dict(zip(self.model.classes_, probs))
+        detected_type, detected_cat = detect_content_type(file_path)
+        if CONFIG.profile == "education":
+            doc_classes = {"лабораторные", "практические", "методички", "курсовые"}
+            if detected_cat == "code":
+                suspicious = (pred != "код")
+            elif detected_cat == "documents":
+                suspicious = (pred not in doc_classes)
+            elif detected_cat == "other":
+                suspicious = False
+            else:
+                suspicious = True
+        else:
+            suspicious = (pred != detected_cat and detected_cat != "other")
+        return pred, prob_dict, detected_type, detected_cat, suspicious
 
     def predict_features(self, feats_dict: Dict[str, float]) -> Tuple[str, Dict[str, float]]:
         feature_vector = self._feats_to_df(feats_dict)
@@ -44,10 +74,19 @@ class FileClassifier:
         os.rename(file_path, dest)
         return f"Moved: {file_path} -> {dest}"
 
-    def sort_file(self, file_path: str, output_root: str, dry_run: bool = False) -> str:
+    def sort_file(self, file_path: str, output_root: str, dry_run: bool = False,
+                  flag_suspicious: bool = True) -> str:
         if not os.path.isfile(file_path):
             return f"Error: {file_path} is not a file"
-        pred, probs = self.predict_file(file_path)
+        pred, probs, det_type, det_cat, suspicious = self.predict_file_verbose(file_path)
+        if suspicious:
+            msg = (f"⚠ SUSPICIOUS: {os.path.basename(file_path)} → predicted '{pred}' "
+                   f"but content is {det_type} ({det_cat})")
+            if flag_suspicious:
+                target_dir = os.path.join(output_root, "_suspicious")
+                result = self.move_file(file_path, target_dir, dry_run)
+                return f"{msg}\n  → moved to _suspicious/\n  {result}"
+            return msg
         target_dir = os.path.join(output_root, pred)
         return self.move_file(file_path, target_dir, dry_run)
 
@@ -56,6 +95,7 @@ class FileClassifier:
         recursive: bool = True, dry_run: bool = False,
         min_size: int = 0, max_size: int = 0,
         allowed_extensions: Optional[List[str]] = None,
+        flag_suspicious: bool = True,
     ) -> List[str]:
         results = []
         file_iter = self._walk_files(dir_path, recursive)
@@ -73,7 +113,7 @@ class FileClassifier:
                 ext = os.path.splitext(fp)[1].lstrip(".").lower()
                 if ext not in allowed_extensions:
                     continue
-            result = self.sort_file(fp, output_root, dry_run)
+            result = self.sort_file(fp, output_root, dry_run, flag_suspicious)
             results.append(result)
         return results
 

@@ -47,6 +47,7 @@ class FileSorterGUI:
         self._min_size = tb.StringVar(value="0")
         self._max_size = tb.StringVar(value="0")
         self._extension_var = tb.StringVar()
+        self._flag_suspicious = tb.BooleanVar(value=True)
 
         self._ds_mode = tb.StringVar(value="real")
         self._ds_input_dir = tb.StringVar()
@@ -61,6 +62,9 @@ class FileSorterGUI:
         self._log_lock = threading.Lock()
         self._running = False
         self._nav_buttons = {}
+        self._log_buffer = []
+        self._suspicious_only = tb.BooleanVar(value=False)
+        self._suspicious_only.trace_add("write", lambda *_: self._reapply_log_filter())
 
         self._build_ui()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -142,9 +146,10 @@ class FileSorterGUI:
 
         row1 = tb.Frame(opt_frame)
         row1.pack(fill=X)
-        tb.Checkbutton(row1, text="Recursive", variable=self._recursive, bootstyle="round-toggle").pack(side=LEFT, padx=4)
-        tb.Checkbutton(row1, text="Dry Run",   variable=self._dry_run,   bootstyle="round-toggle").pack(side=LEFT, padx=4)
-        tb.Checkbutton(row1, text="Copy",      variable=self._copy_mode, bootstyle="round-toggle").pack(side=LEFT, padx=4)
+        tb.Checkbutton(row1, text="Recursive",       variable=self._recursive,       bootstyle="round-toggle").pack(side=LEFT, padx=4)
+        tb.Checkbutton(row1, text="Dry Run",         variable=self._dry_run,         bootstyle="round-toggle").pack(side=LEFT, padx=4)
+        tb.Checkbutton(row1, text="Copy",            variable=self._copy_mode,       bootstyle="round-toggle").pack(side=LEFT, padx=4)
+        tb.Checkbutton(row1, text="Flag Suspicious", variable=self._flag_suspicious, bootstyle="round-toggle").pack(side=LEFT, padx=4)
 
         tb.Label(row1, text="Profile:", font=("", 9, "bold")).pack(side=LEFT, padx=(20, 4))
         profile_combo = tb.Combobox(row1, textvariable=self._profile, values=["general", "education"],
@@ -341,6 +346,13 @@ class FileSorterGUI:
     # ============================================================ LOG
     def _build_log(self):
         self._log_frame.pack(fill=BOTH, expand=True)
+        toolbar = tb.Frame(self._log_frame)
+        toolbar.pack(fill=X)
+        tb.Checkbutton(toolbar, text="Suspicious only", variable=self._suspicious_only,
+                       bootstyle="round-toggle").pack(side=LEFT, padx=4)
+        tb.Label(toolbar, text=f"  {len([m for m in self._log_buffer if 'SUSPICIOUS' in m])} suspicious",
+                 font=("", 9), bootstyle="secondary").pack(side=LEFT, padx=2)
+        self._sus_count_label = toolbar.winfo_children()[-1]
         st = ScrolledText(self._log_frame, height=8, wrap=WORD,
                           font=("Consolas", 9), autohide=True)
         st.pack(fill=BOTH, expand=True)
@@ -409,13 +421,30 @@ class FileSorterGUI:
 
     # ============================================================ LOG
     def _log(self, msg):
-        with self._log_lock:
-            txt = self._log_text.text
-            txt.configure(state=NORMAL)
-            txt.insert(END, msg + "\n")
-            txt.see(END)
-            txt.configure(state=DISABLED)
-            self.root.update_idletasks()
+        self._log_buffer.append(msg)
+        self.root.after(0, self._append_log, msg)
+
+    def _append_log(self, msg):
+        if self._suspicious_only.get() and "SUSPICIOUS" not in msg:
+            return
+        txt = self._log_text.text
+        txt.configure(state=NORMAL)
+        txt.insert(END, msg + "\n")
+        txt.see(END)
+        txt.configure(state=DISABLED)
+
+    def _reapply_log_filter(self):
+        txt = self._log_text.text
+        txt.configure(state=NORMAL)
+        txt.delete("1.0", END)
+        show_all = not self._suspicious_only.get()
+        for m in self._log_buffer:
+            if show_all or "SUSPICIOUS" in m:
+                txt.insert(END, m + "\n")
+        txt.see(END)
+        txt.configure(state=DISABLED)
+        sus_count = len([m for m in self._log_buffer if "SUSPICIOUS" in m])
+        self._sus_count_label.configure(text=f"  {sus_count} suspicious")
 
     # ============================================================ SORT
     def _run_sort(self):
@@ -475,7 +504,8 @@ class FileSorterGUI:
                         recursive=self._recursive.get(),
                         dry_run=self._dry_run.get(),
                         min_size=mn, max_size=mx,
-                        allowed_extensions=ext_filter)
+                        allowed_extensions=ext_filter,
+                        flag_suspicious=self._flag_suspicious.get())
                     for r in results:
                         self._log(r)
                     self._log(f"\nDone: {len(results)} files")

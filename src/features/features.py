@@ -92,6 +92,12 @@ def compute_byte_entropy(content: bytes) -> float:
     return float(ent)
 
 
+OFFICE_EXTENSIONS = {
+    "docx", "docm", "dotx", "dotm",
+    "xlsx", "xlsm", "xltx", "xltm",
+    "pptx", "pptm", "potx", "potm", "ppsx", "ppsm",
+}
+
 MAGIC_SIGNATURES: list[tuple[bytes, str, str]] = [
     (b"\x89PNG\r\n\x1a\n",        "png", "images"),
     (b"\xff\xd8\xff",             "jpg", "images"),
@@ -137,13 +143,20 @@ def detect_content_type(file_path: str) -> tuple[str, str]:
     if not header:
         return "empty", "other"
 
+    ext = os.path.splitext(file_path)[1].lstrip(".").lower()
+    code_exts = {'py', 'js', 'ts', 'java', 'c', 'cpp', 'cs', 'go', 'rs', 'rb', 'php', 'swift', 'kt', 'scala', 'sh', 'bash', 'sql', 'html', 'css', 'scss', 'less', 'r', 'm', 'pl', 'lua', 'hs'}
+
     for sig, type_name, category in MAGIC_SIGNATURES:
         if sig and header.startswith(sig):
+            if sig.startswith(b"PK") and ext in OFFICE_EXTENSIONS:
+                return "ooxml", "documents"
             return type_name, category
 
     printable = sum(32 <= b < 127 for b in header) / len(header)
     zero = header.count(0) / len(header)
     if printable > 0.8 and zero < 0.05:
+        if ext in code_exts:
+            return "script", "code"
         return "text", "documents"
     return "binary", "other"
 
@@ -205,6 +218,35 @@ def extract_content_features(
     return result
 
 
+EDUCATION_KEYWORDS = {
+    "лабораторные": ["лабораторная", "лабораторны", "лаб", "labwork", "ход_работы", "ход работы", "цель_работы", "цель работы", "отчёт", "отчет", "измерение"],
+    "практические": ["практическая", "практическ", "пз_", "задание", "вариант", "решение", "задача", "упражнен", "семинар"],
+    "методички":    ["методичка", "методическ", "лекция", "лекц", "тема", "теорема", "определение", "пособи", "guide", "manual"],
+    "курсовые":     ["курсовая", "курсовой", "курсач", "coursework", "диплом", "реферат", "введение", "глава_", "заключение"],
+    "код":          ["def ", "import ", "class ", "return ", "if __", "for ", "while ", "print(", "function", "algorithm", "алгоритм"],
+}
+
+def extract_text_keywords(file_path: str, target_columns: list, max_bytes: int = 20000) -> Dict[str, float]:
+    text = ""
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            text = f.read(max_bytes)
+    except Exception:
+        pass
+
+    text_lower = text.lower()
+    words = text_lower.split()
+    word_count = max(len(words), 1)
+
+    result = {}
+    for cat in target_columns:
+        kws = EDUCATION_KEYWORDS.get(cat, [])
+        count = sum(text_lower.count(kw) for kw in kws)
+        result[f"text_kw_{cat}"] = min(count / word_count * 100, 1.0)
+
+    return result
+
+
 def extract_all_features(file_path: str) -> Dict[str, float]:
     file_name = os.path.basename(file_path)
     _, ext = os.path.splitext(file_name)
@@ -220,6 +262,8 @@ def extract_all_features(file_path: str) -> Dict[str, float]:
     feats.update(extract_size_features(size_bytes))
     feats.update(extract_extension_features(ext))
     feats.update(extract_content_features(file_path, ext))
+    if CONFIG.profile == "education":
+        feats.update(extract_text_keywords(file_path, CONFIG.target_columns))
     return feats
 
 
@@ -238,6 +282,7 @@ def get_feature_columns():
         + [f"ext_cat_{cat}" for cat in CONFIG.target_columns]
         + ["ext_mismatch", "detected_is_text"]
         + [f"detected_cat_{cat}" for cat in DETECTION_CATEGORIES]
+        + [f"text_kw_{cat}" for cat in CONFIG.target_columns]
         + ["text_length", "text_word_count", "text_line_count",
            "text_unique_word_ratio", "text_avg_word_len", "text_has_content",
            "binary_entropy", "binary_first_bytes_hash",

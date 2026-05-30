@@ -59,18 +59,24 @@ file_sorter/
 
 ## Установка
 
-**Linux / macOS:**
+### 1. Системная зависимость (tkinter)
+
+```bash
+# Arch
+sudo pacman -S tk
+
+# Debian / Ubuntu
+sudo apt install python3-tk
+
+# Fedora
+sudo dnf install python3-tkinter
+```
+
+### 2. Python-зависимости
+
 ```bash
 pip install -r requirements.txt
 ```
-
-**Windows (cmd / PowerShell):**
-```cmd
-pip install -r requirements.txt
-```
-
-> **Примечание:** для GUI требуется `ttkbootstrap`. Он ставится автоматически из `requirements.txt`.
-> Если tkinter не установлен — на Ubuntu/deb: `sudo apt install python3-tk`, на Arch: `sudo pacman -S tk`.
 
 ## Использование (GUI)
 
