@@ -1,0 +1,395 @@
+{
+  "logistic_regression": {
+    "val_f1": 1.0,
+    "val_acc": 1.0,
+    "test_f1": 1.0,
+    "test_acc": 1.0,
+    "test_precision": 1.0,
+    "test_recall": 1.0,
+    "cm": [
+      [
+        167,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        166,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        167,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        167,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        167,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        166
+      ]
+    ],
+    "classes": [
+      "archives",
+      "code",
+      "documents",
+      "images",
+      "media",
+      "other"
+    ]
+  },
+  "random_forest": {
+    "val_f1": 1.0,
+    "val_acc": 1.0,
+    "test_f1": 1.0,
+    "test_acc": 1.0,
+    "test_precision": 1.0,
+    "test_recall": 1.0,
+    "cm": [
+      [
+        167,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        166,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        167,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        167,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        167,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        166
+      ]
+    ],
+    "classes": [
+      "archives",
+      "code",
+      "documents",
+      "images",
+      "media",
+      "other"
+    ]
+  },
+  "gradient_boosting": {
+    "val_f1": 1.0,
+    "val_acc": 1.0,
+    "test_f1": 1.0,
+    "test_acc": 1.0,
+    "test_precision": 1.0,
+    "test_recall": 1.0,
+    "cm": [
+      [
+        167,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        166,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        167,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        167,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        167,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        166
+      ]
+    ],
+    "classes": [
+      "archives",
+      "code",
+      "documents",
+      "images",
+      "media",
+      "other"
+    ]
+  },
+  "best_model": "logistic_regression",
+  "noisy_labels": {
+    "logistic_regression": {
+      "test_f1": 1.0,
+      "test_acc": 1.0,
+      "test_precision": 1.0,
+      "test_recall": 1.0,
+      "cm": [
+        [
+          167,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          166,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          167,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          167,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          167,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          166
+        ]
+      ],
+      "classes": [
+        "archives",
+        "code",
+        "documents",
+        "images",
+        "media",
+        "other"
+      ]
+    },
+    "random_forest": {
+      "test_f1": 0.991,
+      "test_acc": 0.991,
+      "test_precision": 0.991,
+      "test_recall": 0.991,
+      "cm": [
+        [
+          167,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          161,
+          1,
+          0,
+          2,
+          1
+        ],
+        [
+          0,
+          0,
+          166,
+          0,
+          0,
+          1
+        ],
+        [
+          0,
+          0,
+          0,
+          167,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          167,
+          0
+        ],
+        [
+          0,
+          2,
+          1,
+          0,
+          0,
+          163
+        ]
+      ],
+      "classes": [
+        "archives",
+        "code",
+        "documents",
+        "images",
+        "media",
+        "other"
+      ]
+    },
+    "gradient_boosting": {
+      "test_f1": 0.996,
+      "test_acc": 0.996,
+      "test_precision": 0.996,
+      "test_recall": 0.996,
+      "cm": [
+        [
+          167,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          166,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          0,
+          165,
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          167,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          167,
+          0
+        ],
+        [
+          0,
+          2,
+          0,
+          0,
+          0,
+          164
+        ]
+      ],
+      "classes": [
+        "archives",
+        "code",
+        "documents",
+        "images",
+        "media",
+        "other"
+      ]
+    }
+  }
+}
