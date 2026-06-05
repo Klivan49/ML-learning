@@ -29,13 +29,107 @@ except ImportError:
     sys.exit(1)
 
 
+_TRANSLATIONS = {
+    "📂  File Sorter — ML Classification": "📂  Сортировщик файлов — ML Классификация",
+    "Sort": "Сортировка",
+    "Dataset": "Датасет",
+    "Train": "Обучение",
+    "Config": "Настройки",
+    "About": "О программе",
+    "Model": "Модель",
+    "Input": "Вход",
+    "Output": "Выход",
+    "Browse": "Обзор",
+    "Options": "Опции",
+    "Recursive": "Рекурсивно",
+    "Dry Run": "Тестовый режим",
+    "Copy": "Копировать",
+    "Flag Suspicious": "Помечать подозрительные",
+    "Profile:": "Профиль:",
+    "Filters": "Фильтры",
+    "Min size:": "Мин. размер:",
+    "Max size:": "Макс. размер:",
+    "Extensions:": "Расширения:",
+    "space-sep": "через пробел",
+    "▶  Run Sort": "▶  Сортировать",
+    "⏹  Stop": "⏹  Стоп",
+    "Generation Mode": "Режим генерации",
+    "Real (from directory)": "Реальный (из папки)",
+    "Synthetic": "Синтетический",
+    "Input dir:": "Папка входа:",
+    "Output CSV:": "CSV на выход:",
+    "Samples:": "Примеров:",
+    "Seed:": "Сид:",
+    "📊  Generate Dataset": "📊  Сгенерировать датасет",
+    "Dataset CSV:": "CSV датасета:",
+    "Models": "Модели",
+    "Output dir:": "Папка выхода:",
+    "▶  Train Models": "▶  Обучить модели",
+    "Results": "Результаты",
+    "💾  Save": "💾  Сохранить",
+    "↺  Reload": "↺  Перезагрузить",
+    "Suspicious only": "Только подозрительные",
+    "suspicious": "подозрительных",
+    "Log": "Лог",
+    "Idle": "Ожидание",
+    "Sorting...": "Сортировка...",
+    "Generating dataset...": "Генерация датасета...",
+    "Training...": "Обучение...",
+    "Error": "Ошибка",
+    "Saved": "Сохранено",
+    "Running": "Выполнение",
+    "Select model": "Выберите модель",
+    "Select input directory": "Выберите папку с файлами",
+    "Select output directory": "Выберите папку для результатов",
+    "Models output directory": "Папка для моделей",
+    "Select dataset": "Выберите датасет",
+    "Output CSV": "CSV на выход",
+    "Model not found:": "Модель не найдена:",
+    "Input not found:": "Вход не найден:",
+    "Dataset not found:": "Датасет не найден:",
+    "Output path required": "Укажите путь для выхода",
+    "Valid input directory required": "Укажите существующую папку",
+    "Select at least one model": "Выберите хотя бы одну модель",
+    "Min/max size must be integers": "Мин./макс. размер — целые числа",
+    "Configuration saved (runtime). Restart to persist.": "Конфигурация сохранена (в runtime). Перезапустите для сохранения.",
+    "Operation in progress. Quit anyway?": "Выполняется операция. Выйти?",
+    "Model:": "Модель:",
+    "Input:": "Вход:",
+    "Output:": "Выход:",
+    "Filters:": "Фильтры:",
+    "Mode:": "Режим:",
+    "Starting…": "Запуск…",
+    "Stop requested (after current file)": "Остановка (после текущего файла)",
+    "Generating synthetic dataset…": "Генерация синтетического датасета…",
+    "Extracting features from real files…": "Извлечение признаков из реальных файлов…",
+    "copy": "копирование",
+    "move": "перемещение",
+    "dry-run": "тест",
+    "live": "реальный",
+    "recursive": "рекурсивно",
+    "flat": "плоско",
+    "all": "все",
+    "[DRY RUN] Would copy": "[ТЕСТ] Будет скопирован",
+    "Copied:": "Скопировано:",
+    "Moved:": "Перемещён:",
+    "Model Path": "Путь модели",
+    "Val F1": "Val F1",
+    "Test F1": "Test F1",
+    "Test Acc": "Test Acc",
+    "Profiles match dataset generation": "Профиль влияет на генерацию датасета",
+}
+
+def _(text):
+    return _TRANSLATIONS.get(text, text)
+
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 class FileSorterGUI:
     def __init__(self):
         self.root = tb.Window(themename="darkly") if THEMED else tk.Tk()
-        self.root.title("\U0001F4C2  File Sorter — ML Classification")
+        self.root.title(_("\U0001F4C2  File Sorter — ML Classification"))
         self.root.geometry("950x700+100+100")
         self.root.minsize(850, 650)
 
@@ -85,14 +179,14 @@ class FileSorterGUI:
         self._navbar.pack(side=LEFT, fill=Y)
         self._navbar.pack_propagate(False)
 
-        tb.Label(self._navbar, text="File Sorter", font=("Segoe UI", 14, "bold")).pack(anchor=W, pady=(0, 20))
+        tb.Label(self._navbar, text=_("File Sorter"), font=("Segoe UI", 14, "bold")).pack(anchor=W, pady=(0, 20))
 
         pages = [
-            ("sort",    "\U0001F500", "Sort"),
-            ("dataset", "\U0001F4CA", "Dataset"),
-            ("train",   "\U00002699", "Train"),
-            ("config",  "\U0001F6E0", "Config"),
-            ("about",   "\U00002139", "About"),
+            ("sort",    "\U0001F500", _("Sort")),
+            ("dataset", "\U0001F4CA", _("Dataset")),
+            ("train",   "\U00002699", _("Train")),
+            ("config",  "\U0001F6E0", _("Config")),
+            ("about",   "\U00002139", _("About")),
         ]
         for name, icon, label in pages:
             btn = tb.Button(self._navbar, text=f"{icon}  {label}", style="nav.TButton",
@@ -108,7 +202,7 @@ class FileSorterGUI:
         sep = tb.Separator(self._navbar)
         sep.pack(fill=X, pady=15)
 
-        self._status_label = tb.Label(self._navbar, text="Idle", font=("Segoe UI", 9))
+        self._status_label = tb.Label(self._navbar, text=_("Idle"), font=("Segoe UI", 9))
         self._status_label.pack(anchor=W, pady=(0, 5))
 
         self._progress = tb.Progressbar(self._navbar, mode="indeterminate")
@@ -119,7 +213,7 @@ class FileSorterGUI:
 
         frames = ["sort", "dataset", "train", "config", "about"]
         self._frames = {name: tb.Frame(self._container) for name in frames}
-        self._log_frame = tb.LabelFrame(self._container, text="Log")
+        self._log_frame = tb.LabelFrame(self._container, text=_("Log"))
 
         self._build_sort_tab()
         self._build_dataset_tab()
@@ -132,88 +226,94 @@ class FileSorterGUI:
     def _build_sort_tab(self):
         f = self._frames["sort"]
         for i, (txt, w) in enumerate([
-            ("Model",  self._model_path),
-            ("Input",  self._input_path),
-            ("Output", self._output_path),
+            (_("Model"),  self._model_path),
+            (_("Input"),  self._input_path),
+            (_("Output"), self._output_path),
         ]):
             row = tb.Frame(f)
             row.pack(fill=X, pady=4)
-            tb.Label(row, text=txt, width=7, anchor=E).pack(side=LEFT, padx=(0, 8))
+            tb.Label(row, text=txt, width=max(7, len(txt)), anchor=E).pack(side=LEFT, padx=(0, 8))
             entry = tb.Entry(row, textvariable=w)
             entry.pack(side=LEFT, fill=X, expand=True, padx=(0, 6))
             tb.Button(row, text="Browse", command=lambda t=txt: self._browse_sort(t), width=8).pack(side=LEFT)
 
-        opt_frame = tb.LabelFrame(f, text="Options")
+        opt_frame = tb.LabelFrame(f, text=_("Options"))
         opt_frame.pack(fill=X, pady=(8, 0))
 
         row1 = tb.Frame(opt_frame)
         row1.pack(fill=X)
-        tb.Checkbutton(row1, text="Recursive",       variable=self._recursive,       bootstyle="round-toggle").pack(side=LEFT, padx=4)
-        tb.Checkbutton(row1, text="Dry Run",         variable=self._dry_run,         bootstyle="round-toggle").pack(side=LEFT, padx=4)
-        tb.Checkbutton(row1, text="Copy",            variable=self._copy_mode,       bootstyle="round-toggle").pack(side=LEFT, padx=4)
-        tb.Checkbutton(row1, text="Flag Suspicious", variable=self._flag_suspicious, bootstyle="round-toggle").pack(side=LEFT, padx=4)
+        tb.Checkbutton(row1, text=_("Recursive"),       variable=self._recursive,       bootstyle="round-toggle").pack(side=LEFT, padx=4)
+        tb.Checkbutton(row1, text=_("Dry Run"),         variable=self._dry_run,         bootstyle="round-toggle").pack(side=LEFT, padx=4)
+        tb.Checkbutton(row1, text=_("Copy"),            variable=self._copy_mode,       bootstyle="round-toggle").pack(side=LEFT, padx=4)
+        tb.Checkbutton(row1, text=_("Flag Suspicious"), variable=self._flag_suspicious, bootstyle="round-toggle").pack(side=LEFT, padx=4)
 
-        tb.Label(row1, text="Profile:", font=("", 9, "bold")).pack(side=LEFT, padx=(20, 4))
+        tb.Label(row1, text=_("Profile:"), font=("", 9, "bold")).pack(side=LEFT, padx=(20, 4))
         profile_combo = tb.Combobox(row1, textvariable=self._profile, values=["general", "education"],
                                      state="readonly", width=12)
         profile_combo.pack(side=LEFT)
         self._profile.trace_add("write", lambda *_: self._rebuild_config_tab())
 
-        flt_frame = tb.LabelFrame(f, text="Filters")
+        flt_frame = tb.LabelFrame(f, text=_("Filters"))
         flt_frame.pack(fill=X, pady=(8, 0))
 
         row2 = tb.Frame(flt_frame)
         row2.pack(fill=X, pady=2)
-        tb.Label(row2, text="Min size:").pack(side=LEFT)
+        tb.Label(row2, text=_("Min size:")).pack(side=LEFT)
         tb.Entry(row2, textvariable=self._min_size, width=10).pack(side=LEFT, padx=4)
-        tb.Label(row2, text="Max size:").pack(side=LEFT, padx=(15, 0))
+        tb.Label(row2, text=_("Max size:")).pack(side=LEFT, padx=(15, 0))
         tb.Entry(row2, textvariable=self._max_size, width=10).pack(side=LEFT, padx=4)
-        tb.Label(row2, text="Extensions:").pack(side=LEFT, padx=(15, 0))
+        tb.Label(row2, text=_("Extensions:")).pack(side=LEFT, padx=(15, 0))
         tb.Entry(row2, textvariable=self._extension_var, width=20).pack(side=LEFT, fill=X, expand=True, padx=4)
-        tb.Label(row2, text="space-sep", font=("", 8)).pack(side=LEFT)
+        tb.Label(row2, text=_("space-sep"), font=("", 8)).pack(side=LEFT)
 
         btn_frame = tb.Frame(f)
         btn_frame.pack(fill=X, pady=(14, 0))
-        tb.Button(btn_frame, text="\u25B6  Run Sort", bootstyle="success", command=self._run_sort, width=18).pack(side=LEFT, padx=(0, 6))
-        tb.Button(btn_frame, text="\u23F9  Stop",     bootstyle="secondary", command=self._stop_sort, width=12).pack(side=LEFT)
+        tb.Button(btn_frame, text=_("\u25B6  Run Sort"), bootstyle="success", command=self._run_sort, width=18).pack(side=LEFT, padx=(0, 6))
+        tb.Button(btn_frame, text=_("\u23F9  Stop"),     bootstyle="secondary", command=self._stop_sort, width=12).pack(side=LEFT)
 
     # ============================================================ DATASET TAB
     def _build_dataset_tab(self):
         f = self._frames["dataset"]
 
-        mode_frame = tb.LabelFrame(f, text="Generation Mode")
+        mode_frame = tb.LabelFrame(f, text=_("Generation Mode"))
         mode_frame.pack(fill=X, pady=(0, 8))
 
         rb_frame = tb.Frame(mode_frame)
         rb_frame.pack(fill=X, pady=4)
-        tb.Radiobutton(rb_frame, text="Real (from directory)", variable=self._ds_mode, value="real",
+        tb.Radiobutton(rb_frame, text=_("Real (from directory)"), variable=self._ds_mode, value="real",
                        command=self._toggle_ds_mode).pack(side=LEFT, padx=(0, 20))
-        tb.Radiobutton(rb_frame, text="Synthetic", variable=self._ds_mode, value="synthetic",
+        tb.Radiobutton(rb_frame, text=_("Synthetic"), variable=self._ds_mode, value="synthetic",
                        command=self._toggle_ds_mode).pack(side=LEFT)
 
         self._ds_real_frame = tb.Frame(mode_frame)
         self._ds_real_frame.pack(fill=X, pady=4)
-        tb.Label(self._ds_real_frame, text="Input dir:", width=10, anchor=E).pack(side=LEFT, padx=(0, 8))
+        tb.Label(self._ds_real_frame, text=_("Input dir:"), width=10, anchor=E).pack(side=LEFT, padx=(0, 8))
         tb.Entry(self._ds_real_frame, textvariable=self._ds_input_dir).pack(side=LEFT, fill=X, expand=True, padx=(0, 6))
-        tb.Button(self._ds_real_frame, text="Browse", command=lambda: self._browse_ds("input"), width=8).pack(side=LEFT)
+        tb.Button(self._ds_real_frame, text=_("Browse"), command=lambda: self._browse_ds("input"), width=8).pack(side=LEFT)
 
         self._ds_syn_frame = tb.Frame(mode_frame)
         row = tb.Frame(self._ds_syn_frame)
         row.pack(fill=X, pady=2)
-        tb.Label(row, text="Samples:", width=10, anchor=E).pack(side=LEFT, padx=(0, 8))
+        tb.Label(row, text=_("Samples:"), width=10, anchor=E).pack(side=LEFT, padx=(0, 8))
         tb.Spinbox(row, from_=100, to=100000, textvariable=self._ds_synthetic_count, width=10).pack(side=LEFT, padx=(0, 20))
-        tb.Label(row, text="Seed:", anchor=E).pack(side=LEFT, padx=(0, 4))
+        tb.Label(row, text=_("Seed:"), anchor=E).pack(side=LEFT, padx=(0, 4))
         tb.Entry(row, textvariable=self._ds_seed, width=8).pack(side=LEFT)
+
+        profile_frame = tb.Frame(f)
+        profile_frame.pack(fill=X, pady=4)
+        tb.Label(profile_frame, text=_("Profile:"), font=("", 9, "bold")).pack(side=LEFT, padx=(0, 4))
+        tb.Combobox(profile_frame, textvariable=self._profile, values=["general", "education"],
+                     state="readonly", width=12).pack(side=LEFT)
 
         out_frame = tb.Frame(f)
         out_frame.pack(fill=X, pady=4)
-        tb.Label(out_frame, text="Output CSV:", width=10, anchor=E).pack(side=LEFT, padx=(0, 8))
+        tb.Label(out_frame, text=_("Output CSV:"), width=10, anchor=E).pack(side=LEFT, padx=(0, 8))
         tb.Entry(out_frame, textvariable=self._ds_output_csv).pack(side=LEFT, fill=X, expand=True, padx=(0, 6))
-        tb.Button(out_frame, text="Browse", command=lambda: self._browse_ds("output"), width=8).pack(side=LEFT)
+        tb.Button(out_frame, text=_("Browse"), command=lambda: self._browse_ds("output"), width=8).pack(side=LEFT)
 
         btn_frame = tb.Frame(f)
         btn_frame.pack(fill=X, pady=(14, 0))
-        tb.Button(btn_frame, text="\U0001F4CA  Generate Dataset", bootstyle="success",
+        tb.Button(btn_frame, text=_("\U0001F4CA  Generate Dataset"), bootstyle="success",
                   command=self._run_generate_dataset, width=22).pack(side=LEFT)
 
         self._toggle_ds_mode()
@@ -233,11 +333,11 @@ class FileSorterGUI:
 
         row0 = tb.Frame(f)
         row0.pack(fill=X, pady=4)
-        tb.Label(row0, text="Dataset CSV:", width=12, anchor=E).pack(side=LEFT, padx=(0, 8))
+        tb.Label(row0, text=_("Dataset CSV:"), width=12, anchor=E).pack(side=LEFT, padx=(0, 8))
         tb.Entry(row0, textvariable=self._tr_csv_path).pack(side=LEFT, fill=X, expand=True, padx=(0, 6))
-        tb.Button(row0, text="Browse", command=lambda: self._browse("tr_csv"), width=8).pack(side=LEFT)
+        tb.Button(row0, text=_("Browse"), command=lambda: self._browse("tr_csv"), width=8).pack(side=LEFT)
 
-        model_frame = tb.LabelFrame(f, text="Models")
+        model_frame = tb.LabelFrame(f, text=_("Models"))
         model_frame.pack(fill=X, pady=8)
         row_m = tb.Frame(model_frame)
         row_m.pack(fill=X, pady=4)
@@ -252,25 +352,25 @@ class FileSorterGUI:
 
         row1 = tb.Frame(f)
         row1.pack(fill=X, pady=4)
-        tb.Label(row1, text="Output dir:", width=12, anchor=E).pack(side=LEFT, padx=(0, 8))
+        tb.Label(row1, text=_("Output dir:"), width=12, anchor=E).pack(side=LEFT, padx=(0, 8))
         tb.Entry(row1, textvariable=self._tr_output_dir).pack(side=LEFT, fill=X, expand=True, padx=(0, 6))
-        tb.Button(row1, text="Browse", command=lambda: self._browse("tr_out"), width=8).pack(side=LEFT)
+        tb.Button(row1, text=_("Browse"), command=lambda: self._browse("tr_out"), width=8).pack(side=LEFT)
 
         btn_frame = tb.Frame(f)
         btn_frame.pack(fill=X, pady=(14, 0))
-        tb.Button(btn_frame, text="\u25B6  Train Models", bootstyle="success",
+        tb.Button(btn_frame, text=_("\u25B6  Train Models"), bootstyle="success",
                   command=self._run_train_model, width=22).pack(side=LEFT)
 
-        results_frame = tb.LabelFrame(f, text="Results")
+        results_frame = tb.LabelFrame(f, text=_("Results"))
         results_frame.pack(fill=BOTH, expand=True, pady=(8, 0))
 
         columns = ("model", "val_f1", "test_f1", "test_acc", "path")
         self._tr_tree = ttk.Treeview(results_frame, columns=columns, show="headings", height=6)
-        self._tr_tree.heading("model", text="Model")
-        self._tr_tree.heading("val_f1", text="Val F1")
-        self._tr_tree.heading("test_f1", text="Test F1")
-        self._tr_tree.heading("test_acc", text="Test Acc")
-        self._tr_tree.heading("path", text="Model Path")
+        self._tr_tree.heading("model", text=_("Model"))
+        self._tr_tree.heading("val_f1", text=_("Val F1"))
+        self._tr_tree.heading("test_f1", text=_("Test F1"))
+        self._tr_tree.heading("test_acc", text=_("Test Acc"))
+        self._tr_tree.heading("path", text=_("Model Path"))
         self._tr_tree.column("model", width=180)
         self._tr_tree.column("val_f1", width=80)
         self._tr_tree.column("test_f1", width=80)
@@ -319,26 +419,26 @@ class FileSorterGUI:
             self._config_widgets[cat] = (e_text, k_text)
         btn_row = tb.Frame(self._config_inner)
         btn_row.grid(row=len(CONFIG.target_columns), column=0, pady=12)
-        tb.Button(btn_row, text="\U0001F4BE  Save", bootstyle="success", command=self._save_config).pack(side=LEFT, padx=3)
-        tb.Button(btn_row, text="\u21BA  Reload", bootstyle="secondary", command=self._reload_config).pack(side=LEFT, padx=3)
+        tb.Button(btn_row, text=_("\U0001F4BE  Save"), bootstyle="success", command=self._save_config).pack(side=LEFT, padx=3)
+        tb.Button(btn_row, text=_("\u21BA  Reload"), bootstyle="secondary", command=self._reload_config).pack(side=LEFT, padx=3)
 
     # ============================================================ ABOUT TAB
     def _build_about_tab(self):
         txt = (
-            "\U0001F4C2  File Sorter — ML File Classification\n\n"
-            "Categories: " + ", ".join(CONFIG.target_columns) + "\n"
-            "Models: Logistic Regression, Random Forest, Gradient Boosting\n"
-            f"Features: 48 (filename, size, extension, magic bytes, text stats)\n\n"
-            "GUI Workflow:\n"
-            "  1. Dataset tab  — create dataset (real files or synthetic)\n"
-            "  2. Train tab    — train one or more models\n"
-            "  3. Sort tab     — select model & sort files\n"
-            "  4. Config tab   — customize categories & keywords\n\n"
-            "CLI also available:\n"
+            "\U0001F4C2  Сортировщик файлов — ML Классификация\n\n"
+            "Категории: " + ", ".join(CONFIG.target_columns) + "\n"
+            "Модели: Logistic Regression, Random Forest, Gradient Boosting\n"
+            f"Признаков: 48 (имя, размер, расширение, магические байты, статистика текста)\n\n"
+            "Работа в GUI:\n"
+            "  1. Вкладка «Датасет» — создайте датасет (реальные файлы или синтетика)\n"
+            "  2. Вкладка «Обучение» — обучите одну или несколько моделей\n"
+            "  3. Вкладка «Сортировка» — выберите модель и сортируйте файлы\n"
+            "  4. Вкладка «Настройки» — настройте категории и ключевые слова\n\n"
+            "Также доступен CLI:\n"
             "  python scripts/generate_dataset.py --help\n"
             "  python scripts/train_model.py --help\n"
             "  python scripts/sort_files.py --help\n\n"
-            "Launch GUI: python scripts/gui.py  or  ./gui.sh\n"
+            "Запуск GUI: python scripts/gui.py  или  ./gui.sh\n"
         )
         text = tb.Text(self._frames["about"], wrap=WORD, font=("Segoe UI", 11), padx=15, pady=15, state=NORMAL)
         text.insert(END, txt)
@@ -350,9 +450,9 @@ class FileSorterGUI:
         self._log_frame.pack(fill=BOTH, expand=True)
         toolbar = tb.Frame(self._log_frame)
         toolbar.pack(fill=X)
-        tb.Checkbutton(toolbar, text="Suspicious only", variable=self._suspicious_only,
+        tb.Checkbutton(toolbar, text=_("Suspicious only"), variable=self._suspicious_only,
                        bootstyle="round-toggle").pack(side=LEFT, padx=4)
-        tb.Label(toolbar, text=f"  {len([m for m in self._log_buffer if 'SUSPICIOUS' in m])} suspicious",
+        tb.Label(toolbar, text=f"  {len([m for m in self._log_buffer if 'ПОДОЗРИТЕЛЬНЫЙ' in m])} {_('suspicious')}",
                  font=("", 9), bootstyle="secondary").pack(side=LEFT, padx=2)
         self._sus_count_label = toolbar.winfo_children()[-1]
         st = ScrolledText(self._log_frame, height=8, wrap=WORD,
@@ -370,36 +470,36 @@ class FileSorterGUI:
     # ============================================================ BROWSE
     def _browse_sort(self, target):
         if target == "Model":
-            p = filedialog.askopenfilename(title="Select model", filetypes=[("PKL", "*.pkl"), ("All", "*.*")])
+            p = filedialog.askopenfilename(title=_("Select model"), filetypes=[("PKL", "*.pkl"), ("All", "*.*")])
             if p:
                 self._model_path.set(p)
         elif target == "Input":
-            p = filedialog.askdirectory(title="Select input directory")
+            p = filedialog.askdirectory(title=_("Select input directory"))
             if p:
                 self._input_path.set(p)
         else:
-            p = filedialog.askdirectory(title="Select output directory")
+            p = filedialog.askdirectory(title=_("Select output directory"))
             if p:
                 self._output_path.set(p)
 
     def _browse_ds(self, target):
         if target == "input":
-            p = filedialog.askdirectory(title="Select input directory")
+            p = filedialog.askdirectory(title=_("Select input directory"))
             if p:
                 self._ds_input_dir.set(p)
         else:
-            p = filedialog.asksaveasfilename(title="Output CSV", defaultextension=".csv",
+            p = filedialog.asksaveasfilename(title=_("Output CSV"), defaultextension=".csv",
                                              filetypes=[("CSV", "*.csv")])
             if p:
                 self._ds_output_csv.set(p)
 
     def _browse(self, target):
         if target == "tr_csv":
-            p = filedialog.askopenfilename(title="Select dataset", filetypes=[("CSV", "*.csv")])
+            p = filedialog.askopenfilename(title=_("Select dataset"), filetypes=[("CSV", "*.csv")])
             if p:
                 self._tr_csv_path.set(p)
         elif target == "tr_out":
-            p = filedialog.askdirectory(title="Models output directory")
+            p = filedialog.askdirectory(title=_("Models output directory"))
             if p:
                 self._tr_output_dir.set(p)
 
@@ -411,9 +511,9 @@ class FileSorterGUI:
                 kws = [x.strip().lower() for x in k_w.get("1.0", END).strip().split(",") if x.strip()]
                 CONFIG.extension_to_category[cat] = exts
                 CONFIG.category_keywords[cat] = kws
-            Messagebox.show_info("Configuration saved (runtime). Restart to persist.", "Saved", parent=self.root)
+            Messagebox.show_info(_("Configuration saved (runtime). Restart to persist."), _("Saved"), parent=self.root)
         except Exception as e:
-            Messagebox.show_error(str(e), "Error", parent=self.root)
+            Messagebox.show_error(str(e), _("Error"), parent=self.root)
 
     def _reload_config(self):
         for cat, (e_w, k_w) in self._config_widgets.items():
@@ -427,7 +527,7 @@ class FileSorterGUI:
         self.root.after(0, self._append_log, msg)
 
     def _append_log(self, msg):
-        if self._suspicious_only.get() and "SUSPICIOUS" not in msg:
+        if self._suspicious_only.get() and "ПОДОЗРИТЕЛЬНЫЙ" not in msg:
             return
         txt = self._log_text.text
         txt.configure(state=NORMAL)
@@ -441,12 +541,12 @@ class FileSorterGUI:
         txt.delete("1.0", END)
         show_all = not self._suspicious_only.get()
         for m in self._log_buffer:
-            if show_all or "SUSPICIOUS" in m:
+            if show_all or "ПОДОЗРИТЕЛЬНЫЙ" in m:
                 txt.insert(END, m + "\n")
         txt.see(END)
         txt.configure(state=DISABLED)
-        sus_count = len([m for m in self._log_buffer if "SUSPICIOUS" in m])
-        self._sus_count_label.configure(text=f"  {sus_count} suspicious")
+        sus_count = len([m for m in self._log_buffer if "ПОДОЗРИТЕЛЬНЫЙ" in m])
+        self._sus_count_label.configure(text=f"  {sus_count} {_('suspicious')}")
 
     # ============================================================ SORT
     def _run_sort(self):
@@ -457,19 +557,19 @@ class FileSorterGUI:
         op = self._output_path.get().strip()
 
         if not os.path.isfile(mp):
-            Messagebox.show_error(f"Model not found:\n{mp}", "Error", parent=self.root)
+            Messagebox.show_error(_("Model not found:") + "\n" + mp, _("Error"), parent=self.root)
             return
         if not os.path.exists(ip):
-            Messagebox.show_error(f"Input not found:\n{ip}", "Error", parent=self.root)
+            Messagebox.show_error(_("Input not found:") + "\n" + ip, _("Error"), parent=self.root)
             return
         if not op:
-            Messagebox.show_error("Output path required", "Error", parent=self.root)
+            Messagebox.show_error(_("Output path required"), _("Error"), parent=self.root)
             return
 
         try:
             mn, mx = int(self._min_size.get()), int(self._max_size.get())
         except ValueError:
-            Messagebox.show_error("Min/max size must be integers", "Error", parent=self.root)
+            Messagebox.show_error(_("Min/max size must be integers"), _("Error"), parent=self.root)
             return
 
         ext_filter = None
@@ -480,19 +580,21 @@ class FileSorterGUI:
         CONFIG._apply_profile()
 
         self._running = True
-        self._status_label.configure(text="Sorting...")
+        self._status_label.configure(text=_("Sorting..."))
         self._progress.start(10)
 
         self._log("\u2500" * 55)
-        self._log(f"Model:   {mp}")
-        self._log(f"Input:   {ip}")
-        self._log(f"Output:  {op}")
-        self._log(f"Profile: {CONFIG.profile}")
-        self._log(f"Filters: min={mn}, max={mx}, ext={ext_filter or 'all'}")
-        self._log(f"Mode:    {'copy' if self._copy_mode.get() else 'move'} | "
-                  f"{'dry-run' if self._dry_run.get() else 'live'} | "
-                  f"{'recursive' if self._recursive.get() else 'flat'}")
-        self._log("Starting\u2026")
+        self._log(_("Model:") + f"   {mp}")
+        self._log(_("Input:") + f"   {ip}")
+        self._log(_("Output:") + f"  {op}")
+        self._log(_("Profile:") + f" {CONFIG.profile}")
+        self._log(_("Filters:") + f" min={mn}, max={mx}, ext={ext_filter or 'all'}")
+        mode_parts = []
+        mode_parts.append(_("copy") if self._copy_mode.get() else _("move"))
+        mode_parts.append(_("dry-run") if self._dry_run.get() else _("live"))
+        mode_parts.append(_("recursive") if self._recursive.get() else _("flat"))
+        self._log(_("Mode:") + f"    {' | '.join(mode_parts)}")
+        self._log(_("Starting\u2026"))
 
         def task():
             try:
@@ -510,9 +612,9 @@ class FileSorterGUI:
                         flag_suspicious=self._flag_suspicious.get())
                     for r in results:
                         self._log(r)
-                    self._log(f"\nDone: {len(results)} files")
+                    self._log(f"\nГотово: {len(results)} файлов")
             except Exception as e:
-                self._log(f"ERROR: {e}")
+                self._log(f"ОШИБКА: {e}")
             finally:
                 self._running = False
                 self.root.after(0, self._on_done)
@@ -521,11 +623,11 @@ class FileSorterGUI:
 
     def _on_done(self):
         self._progress.stop()
-        self._status_label.configure(text="Idle")
+        self._status_label.configure(text=_("Idle"))
 
     def _copy_file(self, fp, td, dr):
         if dr:
-            return f"[DRY RUN] Would copy {fp} -> {td}"
+            return _("[DRY RUN] Would copy") + f" {fp} -> {td}"
         os.makedirs(td, exist_ok=True)
         dest = os.path.join(td, os.path.basename(fp))
         if os.path.exists(dest):
@@ -535,10 +637,10 @@ class FileSorterGUI:
                 c += 1
             dest = f"{stem}_{c}{ext}"
         shutil.copy2(fp, dest)
-        return f"Copied: {fp} -> {dest}"
+        return _("Copied:") + f" {fp} -> {dest}"
 
     def _stop_sort(self):
-        self._log("Stop requested (after current file)")
+        self._log(_("Stop requested (after current file)"))
         self._running = False
 
     # ============================================================ DATASET GENERATION
@@ -550,34 +652,34 @@ class FileSorterGUI:
 
         output_csv = self._ds_output_csv.get().strip()
         if not output_csv:
-            Messagebox.show_error("Output CSV path required", "Error", parent=self.root)
+            Messagebox.show_error(_("Output path required"), _("Error"), parent=self.root)
             return
 
         self._running = True
-        self._status_label.configure(text="Generating dataset...")
+        self._status_label.configure(text=_("Generating dataset..."))
         self._progress.start(10)
 
         self._log("\u2500" * 55)
-        self._log(f"Profile: {CONFIG.profile}")
+        self._log(_("Profile:") + f" {CONFIG.profile}")
 
         if self._ds_mode.get() == "real":
             input_dir = self._ds_input_dir.get().strip()
             if not input_dir or not os.path.isdir(input_dir):
-                Messagebox.show_error("Valid input directory required", "Error", parent=self.root)
+                Messagebox.show_error(_("Valid input directory required"), _("Error"), parent=self.root)
                 self._running = False
                 return
-            self._log(f"Mode: real | Input: {input_dir}")
-            self._log(f"Output: {output_csv}")
-            self._log("Extracting features from real files\u2026")
+            self._log(f"{_('Mode:')} real | {_('Input:')} {input_dir}")
+            self._log(f"{_('Output:')} {output_csv}")
+            self._log(_("Extracting features from real files\u2026"))
 
             def task():
                 try:
                     df = build_real_dataset(input_dir, output_csv)
-                    self._log(f"Done: {len(df)} samples, {len(df.columns)} columns")
+                    self._log(f"Готово: {len(df)} samples, {len(df.columns)} columns")
                     dist = df["target_class"].value_counts().to_string()
-                    self._log(f"Class distribution:\n{dist}")
+                    self._log(f"Распределение классов:\n{dist}")
                 except Exception as e:
-                    self._log(f"ERROR: {e}")
+                    self._log(f"ОШИБКА: {e}")
                 finally:
                     self._running = False
                     self.root.after(0, self._on_done)
@@ -586,18 +688,18 @@ class FileSorterGUI:
         else:
             count = self._ds_synthetic_count.get()
             seed = self._ds_seed.get()
-            self._log(f"Mode: synthetic | Samples: {count} | Seed: {seed}")
-            self._log(f"Output: {output_csv}")
-            self._log("Generating synthetic dataset\u2026")
+            self._log(f"{_('Mode:')} synthetic | {_('Samples:')} {count} | {_('Seed:')} {seed}")
+            self._log(f"{_('Output:')} {output_csv}")
+            self._log(_("Generating synthetic dataset\u2026"))
 
             def task():
                 try:
                     df = build_synthetic_dataset(count, output_csv, synthetic_dir="synthetic_data", seed=seed)
-                    self._log(f"Done: {len(df)} samples, {len(df.columns)} columns")
+                    self._log(f"Готово: {len(df)} samples, {len(df.columns)} columns")
                     dist = df["target_class"].value_counts().to_string()
-                    self._log(f"Class distribution:\n{dist}")
+                    self._log(f"Распределение классов:\n{dist}")
                 except Exception as e:
-                    self._log(f"ERROR: {e}")
+                    self._log(f"ОШИБКА: {e}")
                 finally:
                     self._running = False
                     self.root.after(0, self._on_done)
@@ -612,30 +714,30 @@ class FileSorterGUI:
         output_dir = self._tr_output_dir.get().strip()
 
         if not os.path.isfile(csv_path):
-            Messagebox.show_error(f"Dataset not found:\n{csv_path}", "Error", parent=self.root)
+            Messagebox.show_error(f"{_('Dataset not found:')}\n{csv_path}", _("Error"), parent=self.root)
             return
 
         models_to_train = [name for name, var in self._tr_models.items() if var.get()]
         if not models_to_train:
-            Messagebox.show_error("Select at least one model", "Error", parent=self.root)
+            Messagebox.show_error(_("Select at least one model"), _("Error"), parent=self.root)
             return
 
         CONFIG.profile = self._profile.get()
         CONFIG._apply_profile()
 
         self._running = True
-        self._status_label.configure(text="Training...")
+        self._status_label.configure(text=_("Training..."))
         self._progress.start(10)
 
         for row in self._tr_tree.get_children():
             self._tr_tree.delete(row)
 
         self._log("\u2500" * 55)
-        self._log(f"Dataset: {csv_path}")
-        self._log(f"Models: {', '.join(models_to_train)}")
-        self._log(f"Output: {output_dir}")
-        self._log(f"Profile: {CONFIG.profile}")
-        self._log("Training\u2026")
+        self._log(f"{_('Dataset CSV:').rstrip(':')}: {csv_path}")
+        self._log(f"{_('Models')}: {', '.join(models_to_train)}")
+        self._log(f"{_('Output:')} {output_dir}")
+        self._log(f"{_('Profile:')} {CONFIG.profile}")
+        self._log(_("Training\u2026"))
 
         def task():
             try:
@@ -649,9 +751,9 @@ class FileSorterGUI:
                     self.root.after(0, lambda n=name, v=vf, t=tf, a=ta, p=path: self._tr_tree.insert(
                         "", END, values=(n, f"{v:.4f}", f"{t:.4f}", f"{a:.4f}", p)))
                 best = max(results, key=lambda k: results[k]["test"]["f1_macro"])
-                self._log(f"\nBest model: {best}")
+                self._log(f"\nЛучшая модель: {best}")
             except Exception as e:
-                self._log(f"ERROR: {e}")
+                self._log(f"ОШИБКА: {e}")
                 import traceback
                 self._log(traceback.format_exc())
             finally:
@@ -663,7 +765,7 @@ class FileSorterGUI:
     # ============================================================ CLOSE
     def _on_close(self):
         if self._running:
-            if not Messagebox.yesno("Operation in progress. Quit anyway?", "Running", parent=self.root):
+            if not Messagebox.yesno(_("Operation in progress. Quit anyway?"), _("Running"), parent=self.root):
                 return
         self.root.destroy()
 

@@ -62,7 +62,7 @@ class FileClassifier:
     @staticmethod
     def move_file(file_path: str, target_dir: str, dry_run: bool = False) -> str:
         if dry_run:
-            return f"[DRY RUN] Would move {file_path} -> {target_dir}"
+            return f"[ТЕСТ] Будет перемещён {file_path} -> {target_dir}"
         os.makedirs(target_dir, exist_ok=True)
         dest = os.path.join(target_dir, os.path.basename(file_path))
         if os.path.exists(dest):
@@ -72,7 +72,7 @@ class FileClassifier:
                 counter += 1
             dest = f"{stem}_{counter}{ext}"
         os.rename(file_path, dest)
-        return f"Moved: {file_path} -> {dest}"
+        return f"Перемещён: {file_path} -> {dest}"
 
     def sort_file(self, file_path: str, output_root: str, dry_run: bool = False,
                   flag_suspicious: bool = True) -> str:
@@ -80,12 +80,12 @@ class FileClassifier:
             return f"Error: {file_path} is not a file"
         pred, probs, det_type, det_cat, suspicious = self.predict_file_verbose(file_path)
         if suspicious:
-            msg = (f"⚠ SUSPICIOUS: {os.path.basename(file_path)} → predicted '{pred}' "
-                   f"but content is {det_type} ({det_cat})")
+            msg = (f"⚠ ПОДОЗРИТЕЛЬНЫЙ: {os.path.basename(file_path)} → предсказан '{pred}' "
+                   f"но содержимое — {det_type} ({det_cat})")
             if flag_suspicious:
                 target_dir = os.path.join(output_root, "_suspicious")
                 result = self.move_file(file_path, target_dir, dry_run)
-                return f"{msg}\n  → moved to _suspicious/\n  {result}"
+                return f"{msg}\n  → перемещён в _suspicious/\n  {result}"
             return msg
         target_dir = os.path.join(output_root, pred)
         return self.move_file(file_path, target_dir, dry_run)

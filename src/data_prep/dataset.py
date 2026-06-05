@@ -1,10 +1,14 @@
 import os
 import random
 import string
+import sys
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Optional, Tuple
 from tqdm import tqdm
+
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
 from configs.config import CONFIG
 from src.features.features import extract_all_features, FEATURE_COLUMNS
 
