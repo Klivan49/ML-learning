@@ -72,22 +72,25 @@ sudo apt install python3-tk
 sudo dnf install python3-tkinter
 ```
 
-### 2. Python-зависимости
+### 2. Python-зависимости (без системного pip)
+
+В системе нет `pip`, поэтому все зависимости ставятся через venv:
 
 ```bash
-pip install -r requirements.txt
+# Создать виртуальное окружение (включает pip)
+python3 -m venv venv
+
+# Установить зависимости (venv/bin/pip, НЕ системный pip)
+venv/bin/pip install -r requirements.txt
 ```
 
 ## Использование (GUI)
 
 ```bash
-# Установка зависимостей
-pip install -r requirements.txt
+# Запуск через venv (предварительно создав и установив зависимости)
+venv/bin/python scripts/gui.py
 
-# Запуск
-python scripts/gui.py
-
-# Или через лаунчер (авто-venv)
+# Или через лаунчер (авто-создание venv + установка зависимостей)
 ./gui.sh
 ```
 
@@ -115,24 +118,31 @@ python scripts/gui.py
 
 ## Использование (CLI)
 
+Все CLI-команды запускаются через `venv/bin/python` (или после `source venv/bin/activate` — просто `python`).
+
+```bash
+# Короткая форма с прямым указанием python из venv
+venv/bin/python scripts/generate_dataset.py ...
+```
+
 ### 1. Генерация датасета
 
 ```bash
 # Синтетический (N примеров, равномерно по классам)
-python scripts/generate_dataset.py --synthetic 5000 --output data/processed/dataset.csv
+venv/bin/python scripts/generate_dataset.py --synthetic 5000 --output data/processed/dataset.csv
 
 # Из реальной директории (путь → класс из имени папки)
-python scripts/generate_dataset.py --real ~/Downloads --output data/processed/dataset_real.csv
+venv/bin/python scripts/generate_dataset.py --real ~/Downloads --output data/processed/dataset_real.csv
 ```
 
 ### 2. Обучение
 
 ```bash
 # Все модели
-python scripts/train_model.py --data data/processed/dataset.csv
+venv/bin/python scripts/train_model.py --data data/processed/dataset.csv
 
 # Выборочно
-python scripts/train_model.py --data data/processed/dataset.csv \
+venv/bin/python scripts/train_model.py --data data/processed/dataset.csv \
     --models logistic_regression random_forest
 ```
 
@@ -142,28 +152,27 @@ python scripts/train_model.py --data data/processed/dataset.csv \
 
 ```bash
 # Один файл
-python scripts/sort_files.py --model models/random_forest.pkl \
+venv/bin/python scripts/sort_files.py --model models/random_forest.pkl \
     --input ~/file.pdf --output ~/Sorted
 
 # Вся директория рекурсивно
-python scripts/sort_files.py --model models/random_forest.pkl \
+venv/bin/python scripts/sort_files.py --model models/random_forest.pkl \
     --input ~/Downloads --output ~/Sorted
 
 # Пробный запуск (без перемещения)
-python scripts/sort_files.py --model models/random_forest.pkl \
+venv/bin/python scripts/sort_files.py --model models/random_forest.pkl \
     --input ~/Downloads --output ~/Sorted --dry-run
 ```
 
 ### Education profile
 
 ```bash
-python scripts/generate_dataset.py --profile education --synthetic 2000 --output data/processed/dataset_edu.csv
-python scripts/train_model.py --profile education --data data/processed/dataset_edu.csv
-python scripts/sort_files.py --profile education --model models/gradient_boosting.pkl --input ~/Studies --output ~/SortedStudies
+venv/bin/python scripts/generate_dataset.py --profile education --synthetic 5000 --output data/processed/edu_dataset.csv
+venv/bin/python scripts/train_model.py --profile education --data data/processed/edu_dataset.csv --output-dir models_edu
+venv/bin/python scripts/sort_files.py --profile education --model models_edu/gradient_boosting.pkl --input ~/Studies --output ~/SortedStudies
 ```
 
-Категории: лекции, лабораторные, пз, курсовые, методички, математика, физика,
-программирование, информатика, химия.
+Категории: лабораторные, практические, методички, курсовые, код.
 
 ## Категории
 

@@ -17,6 +17,8 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import src._venv_setup  # noqa: F401
+
 from configs.config import CONFIG
 from src.data_prep.dataset import build_real_dataset, build_synthetic_dataset
 
