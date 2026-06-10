@@ -29,7 +29,7 @@ except ImportError:
     sys.exit(1)
 
 
-_LANG = "ru"
+_LANG = CONFIG.language
 
 _TRANSLATIONS = {
     "📂  File Sorter — ML Classification": "📂  Сортировщик файлов — ML Классификация",
@@ -195,6 +195,8 @@ class FileSorterGUI:
         global _LANG
         lang = self._lang_var.get()
         _LANG = lang
+        CONFIG.language = lang
+        CONFIG._persist()
         msg = _("Language changed. Restart to apply fully.")
         Messagebox.show_info(msg, parent=self.root)
 

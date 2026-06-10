@@ -1,3 +1,5 @@
+import json
+import os
 from dataclasses import dataclass, field
 from typing import List
 
@@ -82,9 +84,26 @@ EDUCATION = {
 @dataclass
 class FileSorterConfig:
     profile: str = "general"
+    language: str = "ru"
+
+    _CONFIG_PATH = os.path.expanduser("~/.filesorter_config.json")
 
     def __post_init__(self):
         self._apply_profile()
+        self._load_persisted()
+
+    def _persist(self):
+        with open(self._CONFIG_PATH, "w") as f:
+            json.dump({"language": self.language, "profile": self.profile}, f)
+
+    def _load_persisted(self):
+        try:
+            with open(self._CONFIG_PATH) as f:
+                data = json.load(f)
+            self.language = data.get("language", self.language)
+            self.profile = data.get("profile", self.profile)
+        except (FileNotFoundError, json.JSONDecodeError):
+            pass
 
     def _apply_profile(self):
         data = GENERAL if self.profile == "general" else EDUCATION
