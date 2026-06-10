@@ -13,3 +13,4 @@ data/raw/
 *.egg-info/
 dist/
 build/
+*.spec

@@ -29,6 +29,8 @@ except ImportError:
     sys.exit(1)
 
 
+_LANG = "ru"
+
 _TRANSLATIONS = {
     "📂  File Sorter — ML Classification": "📂  Сортировщик файлов — ML Классификация",
     "Sort": "Сортировка",
@@ -117,9 +119,27 @@ _TRANSLATIONS = {
     "Test F1": "Test F1",
     "Test Acc": "Test Acc",
     "Profiles match dataset generation": "Профиль влияет на генерацию датасета",
+    "Language:": "Язык:",
+    "Language changed. Restart to apply fully.": "Язык изменён. Перезапустите для полного применения.",
+    "File Sorter — ML Classification": "Сортировщик файлов — ML Классификация",
+    "Categories:": "Категории:",
+    "Models: Logistic Regression, Random Forest, Gradient Boosting": "Модели: Logistic Regression, Random Forest, Gradient Boosting",
+    "Features: {} (numeric: {}, text: TF‑IDF)": "Признаков: {} (числовых: {}, текст: TF‑IDF)",
+    "Workflow in GUI:": "Работа в GUI:",
+    "  1. «Dataset» tab — create dataset (real files or synthetic)": "  1. Вкладка «Датасет» — создайте датасет (реальные файлы или синтетика)",
+    "  2. «Train» tab — train one or more models": "  2. Вкладка «Обучение» — обучите одну или несколько моделей",
+    "  3. «Sort» tab — select model and sort files": "  3. Вкладка «Сортировка» — выберите модель и сортируйте файлы",
+    "  4. «Config» tab — configure categories and keywords": "  4. Вкладка «Настройки» — настройте категории и ключевые слова",
+    "Also available via CLI:": "Также доступен CLI:",
+    "  python scripts/generate_dataset.py --help": "  python scripts/generate_dataset.py --help",
+    "  python scripts/train_model.py --help": "  python scripts/train_model.py --help",
+    "  python scripts/sort_files.py --help": "  python scripts/sort_files.py --help",
+    "Run GUI: python scripts/gui.py  or  ./gui.sh": "Запуск GUI: python scripts/gui.py  или  ./gui.sh",
 }
 
 def _(text):
+    if _LANG != "ru":
+        return text
     return _TRANSLATIONS.get(text, text)
 
 
@@ -171,6 +191,13 @@ class FileSorterGUI:
             btn.configure(style="nav.TButton" if name != page else "nav-active.TButton")
         self._show_page(page)
 
+    def _on_lang_change(self, *args):
+        global _LANG
+        lang = self._lang_var.get()
+        _LANG = lang
+        msg = _("Language changed. Restart to apply fully.")
+        Messagebox.show_info(msg, parent=self.root)
+
     def _build_ui(self):
         outer = tb.Frame(self.root)
         outer.pack(fill=BOTH, expand=True)
@@ -207,6 +234,15 @@ class FileSorterGUI:
 
         self._progress = tb.Progressbar(self._navbar, mode="indeterminate")
         self._progress.pack(fill=X)
+
+        lang_frame = tb.Frame(self._navbar)
+        lang_frame.pack(fill=X, pady=(15, 0))
+        tb.Label(lang_frame, text=_("Language:"), font=("Segoe UI", 9)).pack(anchor=W)
+        self._lang_var = tb.StringVar(value=_LANG)
+        lang_combo = tb.Combobox(lang_frame, textvariable=self._lang_var,
+                                 values=["en", "ru"], state="readonly", width=6)
+        lang_combo.pack(anchor=W, pady=(2, 0))
+        self._lang_var.trace_add("write", self._on_lang_change)
 
         self._container = tb.Frame(outer)
         self._container.pack(side=RIGHT, fill=BOTH, expand=True, padx=(0, 0), pady=(0, 0))
@@ -433,22 +469,31 @@ class FileSorterGUI:
 
     # ============================================================ ABOUT TAB
     def _build_about_tab(self):
-        txt = (
-            "\U0001F4C2  Сортировщик файлов — ML Классификация\n\n"
-            "Категории: " + ", ".join(CONFIG.target_columns) + "\n"
-            "Модели: Logistic Regression, Random Forest, Gradient Boosting\n"
-            f"Признаков: 48 (имя, размер, расширение, магические байты, статистика текста)\n\n"
-            "Работа в GUI:\n"
-            "  1. Вкладка «Датасет» — создайте датасет (реальные файлы или синтетика)\n"
-            "  2. Вкладка «Обучение» — обучите одну или несколько моделей\n"
-            "  3. Вкладка «Сортировка» — выберите модель и сортируйте файлы\n"
-            "  4. Вкладка «Настройки» — настройте категории и ключевые слова\n\n"
-            "Также доступен CLI:\n"
-            "  python scripts/generate_dataset.py --help\n"
-            "  python scripts/train_model.py --help\n"
-            "  python scripts/sort_files.py --help\n\n"
-            "Запуск GUI: python scripts/gui.py  или  ./gui.sh\n"
-        )
+        from src.features.features import FEATURE_COLUMNS, TEXT_FEATURE_COLUMNS
+        n_feats = len(FEATURE_COLUMNS)
+        n_text = len(TEXT_FEATURE_COLUMNS)
+        categories = ", ".join(CONFIG.target_columns)
+        lines = [
+            "\U0001F4C2  " + _("File Sorter — ML Classification"),
+            "",
+            _("Categories:") + " " + categories,
+            _("Models: Logistic Regression, Random Forest, Gradient Boosting"),
+            _("Features: {} (numeric: {}, text: TF‑IDF)").format(n_feats, n_feats - n_text),
+            "",
+            _("Workflow in GUI:"),
+            _("  1. «Dataset» tab — create dataset (real files or synthetic)"),
+            _("  2. «Train» tab — train one or more models"),
+            _("  3. «Sort» tab — select model and sort files"),
+            _("  4. «Config» tab — configure categories and keywords"),
+            "",
+            _("Also available via CLI:"),
+            _("  python scripts/generate_dataset.py --help"),
+            _("  python scripts/train_model.py --help"),
+            _("  python scripts/sort_files.py --help"),
+            "",
+            _("Run GUI: python scripts/gui.py  or  ./gui.sh"),
+        ]
+        txt = "\n".join(lines) + "\n"
         text = tb.Text(self._frames["about"], wrap=WORD, font=("Segoe UI", 11), padx=15, pady=15, state=NORMAL)
         text.insert(END, txt)
         text.configure(state=DISABLED)
