@@ -153,10 +153,10 @@ class FileSorterGUI:
         self.root.geometry("950x700+100+100")
         self.root.minsize(850, 650)
 
-        self._model_path = tb.StringVar(value=os.path.join(ROOT, "models/random_forest.pkl"))
+        self._model_path = tb.StringVar(value=os.path.join(ROOT, "models", CONFIG.profile, "random_forest.pkl"))
         self._input_path = tb.StringVar()
         self._output_path = tb.StringVar(value=os.path.expanduser(CONFIG.default_output_dir))
-        self._profile = tb.StringVar(value="general")
+        self._profile = tb.StringVar(value=CONFIG.profile)
         self._recursive = tb.BooleanVar(value=True)
         self._dry_run = tb.BooleanVar(value=False)
         self._copy_mode = tb.BooleanVar(value=False)
@@ -172,7 +172,7 @@ class FileSorterGUI:
         self._ds_seed = tb.IntVar(value=42)
 
         self._tr_csv_path = tb.StringVar(value="data/processed/dataset.csv")
-        self._tr_output_dir = tb.StringVar(value="models")
+        self._tr_output_dir = tb.StringVar(value=os.path.join("models", CONFIG.profile))
         self._tr_models = {name: tb.BooleanVar(value=True) for name in MODEL_REGISTRY}
 
         self._log_lock = threading.Lock()

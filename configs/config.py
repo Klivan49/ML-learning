@@ -102,6 +102,7 @@ class FileSorterConfig:
                 data = json.load(f)
             self.language = data.get("language", self.language)
             self.profile = data.get("profile", self.profile)
+            self._apply_profile()
         except (FileNotFoundError, json.JSONDecodeError):
             pass
 
