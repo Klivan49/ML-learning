@@ -7,6 +7,12 @@
 1. [Постановка задачи](#1-постановка-задачи)
 2. [Типы машинного обучения](#2-типы-машинного-обучения)
 3. [Признаки (Feature Engineering)](#3-признаки-feature-engineering)
+   - 3.1. Filename features
+   - 3.2. Size features
+   - 3.3. Extension features
+   - 3.4. Энтропия Шеннона
+   - 3.5. Magic bytes
+   - 3.6. TF-IDF
 4. [Модели и их математика](#4-модели-и-их-математика)
    - 4.1. Логистическая регрессия (LogisticRegression)
    - 4.2. Случайный лес (RandomForest)
@@ -26,7 +32,7 @@
 **Что делает проект?** Принимает на вход файл (или папку с файлами) и автоматически раскладывает их по категориям: документы, картинки, архивы, код, медиа, прочее.
 
 **Формальная постановка:**
-- Вход: файл → извлекаем вектор признаков **x ∈ ℝ⁴⁸**
+- Вход: файл → извлекаем вектор признаков **x ∈ ℝⁿ** (50+ числовых + TF-IDF — сотни признаков)
 - Выход: метка класса **y ∈ {documents, images, archives, code, media, other}**
 - Это задача **обучения с учителем (supervised learning)**, а именно — **многоклассовая классификация (multiclass classification)**
 
@@ -61,7 +67,7 @@
 
 Feature engineering — самый важный этап в ML. Качество признаков определяет потолок качества модели. Модель лишь пытается приблизиться к этому потолку.
 
-В проекте 48 признаков. Рассмотрим каждый блок с примерами.
+В проекте 50+ числовых признаков + сотни TF-IDF признаков из имени и содержимого файла. Рассмотрим каждый блок с примерами.
 
 ### 3.1. Filename features (`features.py:11-34`)
 
@@ -189,6 +195,46 @@ MAGIC_SIGNATURES = [
 
 Это позволяет модели обнаруживать файлы с неправильным расширением.
 
+### 3.6. TF-IDF — текст как признаки (`model.py:15-20`)
+
+TF-IDF (Term Frequency — Inverse Document Frequency) — способ превратить текст в числовой вектор, где каждое слово/символьная N-грамма становится отдельным признаком.
+
+**Математика:**
+
+Для слова (или N-граммы) t в документе d:
+
+```
+TF-IDF(t, d) = TF(t, d) × IDF(t)
+
+TF(t, d) = (число вхождений t в d) / (всего слов в d)
+IDF(t) = ln( (1 + N) / (1 + DF(t)) ) + 1
+```
+
+Где:
+- **TF** — Term Frequency: насколько часто слово встречается в данном документе
+- **IDF** — Inverse Document Frequency: насколько слово редкое во всём корпусе. Чем реже слово, тем выше IDF, тем информативнее признак.
+- **N** — всего документов в корпусе
+- **DF(t)** — число документов, содержащих t
+
+**В проекте используются два TF-IDF:**
+
+1. **На имя файла** (`tfidf_filename_params`): `analyzer="char_wb"`, `ngram_range=(2,5)` — символьные N-граммы внутри слов. Улавливает морфемы "report", "photo", "main" даже в длинных именах. `max_features=100` — берём топ-100 N-грамм.
+
+2. **На содержимое** (`tfidf_content_params`): стандартный word-level. `max_features=500`, `stop_words="english"`, `min_df=2`. Улавливает тематику документа: если в файле часто встречается "def class import" — это код, если "company report financial" — документ.
+
+**Почему TF-IDF внутри ColumnTransformer, а не отдельно?**
+
+```python
+ColumnTransformer([
+    ("num",        StandardScaler(),  numerical_cols),    # 50+ числовых
+    ("name_tfidf", TfidfVectorizer(), "filename_raw"),    # TF-IDF на имя
+    ("content_tfidf", TfidfVectorizer(), "content_raw"),  # TF-IDF на текст
+])
+```
+
+- TF-IDF учится **только на train**: `fit_transform()` на train, `transform()` на val/test — без data leakage
+- Если на инференсе встретится слово, которого не было в train — TfidfVectorizer просто проигнорирует его
+
 ---
 
 ## 4. Модели и их математика
@@ -206,7 +252,7 @@ P(y = 1 | x) = σ(w·x + b) = 1 / (1 + e^{-(w·x + b)})
 ```
 
 Где:
-- **x** — вектор признаков (в нашем случае 48 чисел)
+- **x** — вектор признаков (в нашем случае 50+ числовых + сотни TF-IDF)
 - **w** — вектор весов (какой признак насколько важен)
 - **b** — bias (смещение)
 - **σ(z)** — сигмоидная функция
@@ -336,7 +382,7 @@ Random Forest строит B деревьев (n_estimators=100). Каждое �
 ŷ = argmax Σ_b [T_b(x) = k]   # голосование большинством
 ```
 
-Деревья также случайно выбирают признаки: на каждом разбиении рассматривается не все 48 признаков, а случайное подмножество размером `√48 ≈ 7` (по умолчанию). Это уменьшает корреляцию между деревьями.
+Деревья также случайно выбирают признаки: на каждом разбиении рассматривается не все признаки, а случайное подмножество размером `√n_features` (по умолчанию). Это уменьшает корреляцию между деревьями.
 
 #### Преимущества и недостатки RF
 
@@ -516,9 +562,9 @@ Accuracy = (TP + TN) / (TP + TN + FP + FN)
 ```
 Директория с подпапками по классам
   → collect_real_files() — обход всех файлов
-  → extract_all_features() — 48 признаков на каждый файл
+  → extract_all_features() — 50+ числовых + 2 текстовых на каждый файл
   → assign_class_from_path() — метка класса из имени папки
-  → DataFrame → .csv
+  → DataFrame → .csv (сохраняются и числовые, и сырой текст)
 ```
 
 **Синтетические данные:**
@@ -528,17 +574,25 @@ Accuracy = (TP + TN) / (TP + TN + FP + FN)
   → выбираем случайное расширение (.pdf)
   → генерируем контент (текст или бинарный)
   → создаём реальный файл на диске
-  → extract_all_features() — 48 признаков
+  → extract_all_features() — 50+ числовых + 2 текстовых
   → сохраняем в DataFrame
 ```
 
 ### Этап 2: Обучение (`models/train.py`)
 
 ```
-.csv → load_dataset() → X (признаки), y (метки)
+.csv → load_dataset()
+  │   → числовые колонки → X_num  (fillna=0)
+  │   → текстовые колонки → X_text (fillna="")
+  │   → X = concat(X_num, X_text)
   → train_test_val_split() → 60/20/20
   → Для каждой из 3 моделей:
       → model.fit(X_train, y_train)
+          │   ColumnTransformer:
+          │   ├── числовые → StandardScaler (LR) / passthrough (RF)
+          │   ├── filename_raw → TfidfVectorizer (char_wb, 100 фич)
+          │   └── content_raw → TfidfVectorizer (word, 500 фич)
+          │   └── все склеено → классификатор
       → evaluate(model, X_val) → метрики на val
       → evaluate(model, X_test) → метрики на test
       → joblib.dump(model, .pkl)
@@ -550,9 +604,15 @@ Accuracy = (TP + TN) / (TP + TN + FP + FN)
 ```
 .pkl → joblib.load() → FileClassifier
   → predict_file(path):
-      extract_all_features(path) → вектор признаков
-      model.predict(feature_vector) → класс
-      model.predict_proba(feature_vector) → вероятности
+      extract_all_features(path) → 50+ числовых + 2 текстовых
+      _feats_to_df(feats) → DataFrame (все колонки)
+      model.predict(feature_vector)
+          │   ColumnTransformer (те же трансформеры, что при обучении)
+          │   ├── числовые → scaler.transform()
+          │   ├── filename_raw → tfidf.transform()
+          │   └── content_raw → tfidf.transform()
+          │   → единый вектор → классификатор
+      → class, probabilities
   → sort_file(): move file to <output>/<predicted_class>/
 ```
 
@@ -647,17 +707,26 @@ def extract_all_features(file_path: str) -> Dict[str, float]:
 ### 10.2. Пайплайн модели (`model.py`)
 
 ```python
+def _build_column_transformer(with_scaler: bool = True) -> ColumnTransformer:
+    num_cols = get_feature_columns()  # 50+ числовых признаков
+    scaler = StandardScaler() if with_scaler else "passthrough"
+
+    return ColumnTransformer([
+        ("num", scaler, num_cols),                              # числовые → scaler
+        ("name_tfidf", TfidfVectorizer(**params), "filename_raw"), # имя → TF-IDF
+        ("content_tfidf", TfidfVectorizer(**params), "content_raw"),# текст → TF-IDF
+    ])
+
 def build_logistic_regression() -> Pipeline:
-    params = CONFIG.model_params["logistic_regression"]
-    # params = {"C": 1.0, "max_iter": 1000, "random_state": 42}
     return Pipeline([
-        ("scaler", StandardScaler()),             # нормализация
-        ("clf", LogisticRegression(**params)),    # классификатор
+        ("features", _build_column_transformer(with_scaler=True)),
+        ("clf", LogisticRegression(C=1.0, max_iter=1000)),
     ])
 
 def build_random_forest() -> Pipeline:
     return Pipeline([
-        ("clf", RandomForestClassifier(**params)),  # без scaler!
+        ("features", _build_column_transformer(with_scaler=False)),
+        ("clf", RandomForestClassifier(n_estimators=100)),
     ])
 
 MODEL_REGISTRY = {
@@ -667,7 +736,18 @@ MODEL_REGISTRY = {
 }
 ```
 
+**Зачем ColumnTransformer?** Объединяет три разных типа признаков в один вектор:
+
+```
+Числовые (Scaler) │ TF-IDF на имя │ TF-IDF на содержимое
+    [0.2, -1.5, ...] │ [0, 0.12, 0, ...] │ [0.05, 0, 0.33, ...]
+                     ↓
+           Единый вектор признаков → классификатор
+```
+
 **Почему RF без scaler?** Деревья решений не используют расстояния — они сравнивают признаки с порогами (`x_i > threshold`). Масштаб признака не влияет на работу дерева, в отличие от LR, где используется градиентный спуск.
+
+**Почему TF-IDF внутри пайплайна?** Чтобы исключить data leakage. `TfidfVectorizer.fit_transform()` вызывается на train — запоминает словарь и IDF веса. На val/test вызывается только `transform()` — те же словари, те же веса. Если бы TF-IDF считался на всём датасете до split, модель "подглядывала" бы в test.
 
 **Почему MODEL_REGISTRY — словарь?** Паттерн «реестр» (registry). Позволяет добавлять новые модели без изменения кода обучения: написал новую функцию в `model.py`, добавил в словарь — и `train.py` уже её видит.
 
@@ -728,7 +808,7 @@ for name in models_to_train:
 
 ```python
 def predict_file(self, file_path: str) -> Tuple[str, Dict[str, float]]:
-    feats = extract_all_features(file_path)    # 48 признаков
+    feats = extract_all_features(file_path)    # 50+ числовых + 2 текстовых
     feature_vector = self._feats_to_df(feats)  # в DataFrame
     pred = self.model.predict(feature_vector)[0]       # класс
     probs = self.model.predict_proba(feature_vector)[0] # вероятности
@@ -736,14 +816,24 @@ def predict_file(self, file_path: str) -> Tuple[str, Dict[str, float]]:
     return pred, prob_dict
 ```
 
-**Важно:** вектор признаков для инференса должен содержать **те же 48 колонок** и в **том же порядке**, что и при обучении. `_feats_to_df()` гарантирует это:
+**Важно:** вектор признаков для инференса должен содержать **те же колонки** и в **том же порядке**, что и при обучении. `_feats_to_df()` гарантирует это:
 ```python
 def _feats_to_df(self, feats):
+    # Числовые колонки (50+)
     row = {col: feats.get(col, 0.0) for col in get_feature_columns()}
+    # Текстовые колонки для TF-IDF
+    row[FILENAME_TEXT_COL] = feats.get(FILENAME_TEXT_COL, "")
+    row[CONTENT_TEXT_COL] = feats.get(CONTENT_TEXT_COL, "")
     return pd.DataFrame([row])
 ```
 
-Если признак не удалось извлечь, ставим 0.0 (заполнение пропусков).
+Если числовой признак не удалось извлечь — ставим 0.0. Если текст не удалось прочитать — пустая строка (TF-IDF даст нулевой вектор).
+
+**Как работает ColumnTransformer на инференсе?**
+1. Извлекаем `filename_raw` из имени файла → `TfidfVectorizer.transform()` → вектор 100 признаков
+2. Извлекаем `content_raw` из содержимого → `TfidfVectorizer.transform()` → вектор 500 признаков
+3. Числовые признаки → `StandardScaler.transform()` → 50+ признаков
+4. Всё склеивается → единый вектор → классификатор
 
 ---
 
@@ -802,41 +892,64 @@ H(y, p̄) = -Σ y_k · log(p̄_k)
 
 **Ответ:** Стратификация — это разбиение данных так, чтобы пропорции классов в train/val/test совпадали с исходными. Без стратификации может возникнуть ситуация: редкий класс из 5 объектов попал весь в test, и модель не училась на нём. Со стратификацией: если класс 10% данных, то и в train, и в val, и в test будет ~10% этого класса.
 
+### Вопрос 11: «Зачем TF-IDF и почему он внутри пайплайна?»
+
+**Ответ:** TF-IDF превращает текст в числовой вектор: каждый уникальной N-грамме/слову сопоставляется признак, значение которого тем выше, чем чаще термин встречается в данном документе и чем реже он во всём корпусе. В проекте два TF-IDF: на имя файла (char_wb, ловит морфемы вроде "photo", "report") и на содержимое (word-level, ловит тематику).
+
+TF-IDF внутри `ColumnTransformer` в пайплайне — это важно для **предотвращения data leakage**. Если бы мы посчитали TF-IDF на всём датасете до split, модель "подглядела" бы в test: IDF веса были бы вычислены с учётом test-документов. Но `ColumnTransformer` вызывает `fit_transform()` на train (запоминает словарь и IDF) и только `transform()` на val/test — те же веса, никакого подглядывания.
+
+### Вопрос 12: «Что такое ColumnTransformer?»
+
+**Ответ:** `ColumnTransformer` из sklearn — это инструмент для применения разных трансформаций к разным колонкам DataFrame. В проекте:
+— числовые колонки → `StandardScaler` (для LR) или `passthrough` (для RF/GB)
+— `filename_raw` → `TfidfVectorizer` (символьные N-граммы)
+— `content_raw` → `TfidfVectorizer` (слова)
+
+Результаты всех трёх веток конкатенируются в единую матрицу признаков. `ColumnTransformer` сам следит за тем, чтобы `fit_transform()` был вызван на train, а `transform()` — на val/test.
+
 ---
 
 ## Итоговая схема для ответа у доски
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                 FILE SORTER (ML-проект)                   │
-│          Многоклассовая классификация файлов              │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  ДАННЫЕ                                                  │
-│  ├── Реальные (папки по классам)                         │
-│  └── Синтетические (шаблоны имён + контент)              │
-│                                                          │
-│  ПРИЗНАКИ (48 шт)                                        │
-│  ├── Имя: длина, токены, цифры, дата, keywords           │
-│  ├── Размер: bytes, log, kb, mb, класс (tiny→huge)      │
-│  ├── Расширение: группа + категория (one-hot)            │
-│  └── Содержимое: энтропия, magic bytes, текст. стат-ки   │
-│                                                          │
-│  МОДЕЛИ                                                  │
-│  ├── LogisticRegression ← линейная, softmax, CE-loss     │
-│  │   + StandardScaler (градиентный спуск)                │
-│  ├── RandomForest ← ансамбль, bagging, Gini, голосование │
-│  └── GradientBoosting ← бустинг, псевдо-остатки, ν      │
-│                                                          │
-│  ОЦЕНКА                                                  │
-│  ├── Train / Val / Test = 60/16/20 (со стратификацией)   │
-│  ├── Метрики: Accuracy, Precision, Recall, F1 (macro)    │
-│  └── Выбор лучшей модели по F1-macro на test             │
-│                                                          │
-│  ИНФЕРЕНС                                                │
-│  ├── extract_all_features() → вектор 48 признаков        │
-│  ├── model.predict() → класс                             │
-│  └── model.predict_proba() → вероятности                 │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                 FILE SORTER (ML-проект)                        │
+│          Многоклассовая классификация файлов                   │
+├──────────────────────────────────────────────────────────────┤
+│                                                               │
+│  ДАННЫЕ                                                       │
+│  ├── Реальные (папки по классам)                              │
+│  └── Синтетические (шаблоны имён + контент)                   │
+│                                                               │
+│  ПРИЗНАКИ (50+ числовых + TF-IDF)                             │
+│  ├── Имя: длина, токены, цифры, дата, keywords, filename_raw  │
+│  ├── Размер: bytes, log, kb, mb, класс (tiny→huge)            │
+│  ├── Расширение: группа + категория (one-hot)                 │
+│  ├── Содержимое: энтропия, magic bytes, текст. стат-ки        │
+│  └── TF-IDF: char_wb на имя + word-level на содержимое        │
+│                                                               │
+│  ПАЙПЛАЙН (ColumnTransformer)                                 │
+│  ├── Числовые признаки → StandardScaler                       │
+│  ├── filename_raw → TfidfVectorizer (char_wb, ngram 2-5)      │
+│  └── content_raw → TfidfVectorizer (word, 500 features)       │
+│      ↓                                                        │
+│      Единый вектор → классификатор                            │
+│                                                               │
+│  МОДЕЛИ                                                       │
+│  ├── LogisticRegression ← линейная, softmax, CE-loss          │
+│  ├── RandomForest ← ансамбль, bagging, Gini, голосование      │
+│  └── GradientBoosting ← бустинг, псевдо-остатки, ν            │
+│                                                               │
+│  ОЦЕНКА                                                       │
+│  ├── Train / Val / Test = 60/16/20 (со стратификацией)        │
+│  ├── Метрики: Accuracy, Precision, Recall, F1 (macro)         │
+│  └── Выбор лучшей модели по F1-macro на test                  │
+│                                                               │
+│  ИНФЕРЕНС                                                     │
+│  ├── extract_all_features() → 50+ числовых + 2 текстовых      │
+│  ├── ColumnTransformer.transform() → единый вектор            │
+│  ├── model.predict() → класс                                  │
+│  └── model.predict_proba() → вероятности                      │
+│                                                               │
+└──────────────────────────────────────────────────────────────┘
 ```

@@ -11,16 +11,22 @@ from sklearn.metrics import (
 from typing import Dict, List, Optional, Tuple
 
 from configs.config import CONFIG
-from src.features.features import get_feature_columns
+from src.features.features import get_feature_columns, get_text_feature_columns, FILENAME_TEXT_COL, CONTENT_TEXT_COL
 from src.models.model import MODEL_REGISTRY
 
 
 def load_dataset(csv_path: str) -> Tuple[pd.DataFrame, pd.Series]:
     df = pd.read_csv(csv_path)
-    cols = get_feature_columns()
-    available = [c for c in cols if c in df.columns]
-    X = df[available].fillna(0)
+
+    num_cols = get_feature_columns()
+    X_num = df.reindex(columns=num_cols).fillna(0)
+
+    text_cols = get_text_feature_columns()
+    X_text = df.reindex(columns=text_cols).fillna("")
+
+    X = pd.concat([X_num, X_text], axis=1)
     y = df["target_class"]
+    print(f"Loaded: {X.shape[0]} samples, {len(num_cols)} num features, {len(text_cols)} text features")
     return X, y
 
 

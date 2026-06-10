@@ -7,6 +7,9 @@ from typing import Dict, List, Optional
 from collections import Counter
 from configs.config import CONFIG
 
+FILENAME_TEXT_COL = "filename_raw"
+CONTENT_TEXT_COL = "content_raw"
+
 
 def extract_filename_features(file_name: str) -> Dict[str, float]:
     name_stem, ext = os.path.splitext(file_name)
@@ -191,12 +194,15 @@ def extract_content_features(
             result["text_unique_word_ratio"] = unique_words / max(len(words), 1)
             result["text_avg_word_len"] = np.mean([len(w) for w in words]) if words else 0.0
             result["text_has_content"] = 1.0
+            result[CONTENT_TEXT_COL] = text
         except Exception:
             result.update({"text_length": 0, "text_word_count": 0, "text_line_count": 0,
                            "text_unique_word_ratio": 0, "text_avg_word_len": 0, "text_has_content": 0.0})
+            result[CONTENT_TEXT_COL] = ""
     else:
         result.update({"text_length": 0, "text_word_count": 0, "text_line_count": 0,
                        "text_unique_word_ratio": 0, "text_avg_word_len": 0, "text_has_content": 0.0})
+        result[CONTENT_TEXT_COL] = ""
 
     try:
         with open(file_path, "rb") as f:
@@ -257,6 +263,8 @@ def extract_all_features(file_path: str) -> Dict[str, float]:
     except OSError:
         size_bytes = 0
 
+    name_stem, _ = os.path.splitext(file_name)
+
     feats = {}
     feats.update(extract_filename_features(file_name))
     feats.update(extract_size_features(size_bytes))
@@ -264,6 +272,8 @@ def extract_all_features(file_path: str) -> Dict[str, float]:
     feats.update(extract_content_features(file_path, ext))
     if CONFIG.profile == "education":
         feats.update(extract_text_keywords(file_path, CONFIG.target_columns))
+
+    feats[FILENAME_TEXT_COL] = name_stem.lower()
     return feats
 
 
@@ -291,3 +301,10 @@ def get_feature_columns():
 
 
 FEATURE_COLUMNS = get_feature_columns()
+
+
+def get_text_feature_columns():
+    return [FILENAME_TEXT_COL, CONTENT_TEXT_COL]
+
+
+TEXT_FEATURE_COLUMNS = get_text_feature_columns()

@@ -3,7 +3,7 @@ import joblib
 import pandas as pd
 from typing import Dict, List, Optional, Tuple
 
-from src.features.features import extract_all_features, get_feature_columns, detect_content_type
+from src.features.features import extract_all_features, get_feature_columns, detect_content_type, FILENAME_TEXT_COL, CONTENT_TEXT_COL
 from configs.config import CONFIG
 
 EDU_FOLDER_MAP = {
@@ -57,6 +57,8 @@ class FileClassifier:
 
     def _feats_to_df(self, feats: Dict[str, float]) -> pd.DataFrame:
         row = {col: feats.get(col, 0.0) for col in get_feature_columns()}
+        row[FILENAME_TEXT_COL] = feats.get(FILENAME_TEXT_COL, "")
+        row[CONTENT_TEXT_COL] = feats.get(CONTENT_TEXT_COL, "")
         return pd.DataFrame([row])
 
     @staticmethod

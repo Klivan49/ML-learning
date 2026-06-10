@@ -32,30 +32,32 @@ file_sorter/
 └── README.md
 ```
 
-## Система признаков (48 признаков)
+## Система признаков (50+ числовых + TF-IDF)
 
 | Группа | Признаки | Описание |
 |---|---|---|
 | **Имя файла** | `filename_len`, `filename_token_count`, `filename_digit_ratio`, `filename_word_count`, `filename_has_date` | Длина, число токенов, доля цифр, кол-во слов, наличие даты |
-| | `kw_{documents,images,...}` (6 шт) | Бинарные флаги ключевых слов (invoice, photo, backup, main, ...) |
+| | `kw_{documents,images,...}` (6+ шт) | Бинарные флаги ключевых слов (invoice, photo, backup, main, ...) |
+| | `filename_raw` | Сырой текст имени → **TF-IDF** (char_wb, ngram 2-5, 100 фич) |
 | **Размер** | `size_bytes`, `log_size`, `size_kb`, `size_mb` | Абсолютные и log-преобразованные значения |
 | | `size_{tiny,small,medium,large,huge}` (5 шт) | One-hot классы размера |
 | **Расширение** | `ext_group_{code,doc,img,arc,audio,video,other}` (7 шт) | One-hot группа расширения |
 | | `ext_cat_{documents,images,...}` (6 шт) | One-hot категория расширения |
 | **Содержимое (текст)** | `text_length`, `text_word_count`, `text_line_count`, `text_unique_word_ratio`, `text_avg_word_len` | Статистики текста (для txt, py, json, ...) |
+| | `content_raw` | Сырой текст содержимого → **TF-IDF** (word, 500 фич, stop_words) |
 | **Содержимое (бинарное)** | `binary_entropy`, `binary_first_bytes_hash`, `binary_zero_ratio`, `binary_printable_ratio` | Энтропия байтов, хеш первых 256 байт, доли нулевых/печатных байтов |
 
-Признаки нормализуются внутри пайплайна (StandardScaler для LogisticRegression).
+Числовые признаки нормализуются внутри пайплайна (StandardScaler для LogisticRegression). Текстовые признаки (`filename_raw`, `content_raw`) обрабатываются через `TfidfVectorizer` внутри `ColumnTransformer` — это исключает data leakage.
 
 ## Модели
 
-| Модель | Параметры |
-|---|---|
-| LogisticRegression | C=1.0, max_iter=1000, StandardScaler |
-| RandomForestClassifier | n_estimators=100, max_depth=None |
-| GradientBoostingClassifier | n_estimators=100, lr=0.1, max_depth=3 |
+| Модель | Параметры | Трансформация признаков |
+|---|---|---|
+| LogisticRegression | C=1.0, max_iter=1000 | `StandardScaler` + 2× `TfidfVectorizer` (в `ColumnTransformer`) |
+| RandomForestClassifier | n_estimators=100, max_depth=None | 2× `TfidfVectorizer` (без scaler) |
+| GradientBoostingClassifier | n_estimators=100, lr=0.1, max_depth=3 | 2× `TfidfVectorizer` (без scaler) |
 
-Каждая модель обучается на train/val/test (60/20/20) со стратификацией. Logistic Regression выбрана базовой линией за счёт интерпретируемости коэффициентов. Random Forest — как ансамбль, устойчивый к переобучению. Gradient Boosting — для потенциально более высокого качества на реальных данных.
+Каждая модель использует `ColumnTransformer`, который объединяет числовые признаки (с `StandardScaler` для LR или `passthrough` для RF/GB) и TF-IDF признаки из имени файла (`char_wb`, ngram 2-5) и содержимого (word-level, 500 features). Обучаются на train/val/test (60/20/20) со стратификацией. Logistic Regression выбрана базовой линией за счёт интерпретируемости коэффициентов. Random Forest — как ансамбль, устойчивый к переобучению. Gradient Boosting — для потенциально более высокого качества на реальных данных.
 
 ## Установка
 
@@ -189,7 +191,6 @@ venv/bin/python scripts/sort_files.py --profile education --model models_edu/gra
 
 ## Развитие
 
-- **TF-IDF по имени файла** — если имя несёт много информации (счётчики, номера версий)
 - **Byte-level Transformer** — для бинарных файлов (замена энтропии + хеша)
 - **AutoML** — подбор гиперпараметров (GridSearchCV/RandomizedSearch)
 - **Онлайн-обучение** — дообучение на новых файлах без перезапуска пайплайна

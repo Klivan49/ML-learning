@@ -125,6 +125,20 @@ class FileSorterConfig:
         "gradient_boosting": {"n_estimators": 100, "learning_rate": 0.1, "max_depth": 3, "random_state": 42},
     })
 
+    tfidf_filename_params: dict = field(default_factory=lambda: {
+        "analyzer": "char_wb",
+        "ngram_range": (2, 5),
+        "max_features": 100,
+        "min_df": 2,
+    })
+
+    tfidf_content_params: dict = field(default_factory=lambda: {
+        "max_features": 500,
+        "min_df": 2,
+        "max_df": 0.95,
+        "stop_words": "english",
+    })
+
     default_output_dir: str = "~/Sorted"
 
     train_test_split: float = 0.2
