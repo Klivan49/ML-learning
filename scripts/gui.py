@@ -225,17 +225,18 @@ class FileSorterGUI:
     # ============================================================ SORT TAB
     def _build_sort_tab(self):
         f = self._frames["sort"]
-        for i, (txt, w) in enumerate([
-            (_("Model"),  self._model_path),
-            (_("Input"),  self._input_path),
-            (_("Output"), self._output_path),
+        fields = [(self._model_path, "model"), (self._input_path, "input"), (self._output_path, "output")]
+        for i, (txt, (w, key)) in enumerate([
+            (_("Model"),  fields[0]),
+            (_("Input"),  fields[1]),
+            (_("Output"), fields[2]),
         ]):
             row = tb.Frame(f)
             row.pack(fill=X, pady=4)
             tb.Label(row, text=txt, width=max(7, len(txt)), anchor=E).pack(side=LEFT, padx=(0, 8))
             entry = tb.Entry(row, textvariable=w)
             entry.pack(side=LEFT, fill=X, expand=True, padx=(0, 6))
-            tb.Button(row, text="Browse", command=lambda t=txt: self._browse_sort(t), width=8).pack(side=LEFT)
+            tb.Button(row, text="Browse", command=lambda k=key: self._browse_sort(k), width=8).pack(side=LEFT)
 
         opt_frame = tb.LabelFrame(f, text=_("Options"))
         opt_frame.pack(fill=X, pady=(8, 0))
@@ -389,7 +390,15 @@ class FileSorterGUI:
         self._config_canvas.configure(yscrollcommand=self._config_scrollbar.set)
         self._config_canvas.pack(side=LEFT, fill=BOTH, expand=True)
         self._config_scrollbar.pack(side=RIGHT, fill=Y)
+        self._bind_canvas_scroll(self._config_canvas)
         self._populate_config()
+
+    @staticmethod
+    def _bind_canvas_scroll(canvas):
+        canvas.bind("<Enter>", lambda e: canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(int(-1 * e.delta / 120), "units")))
+        canvas.bind("<Leave>", lambda e: canvas.unbind_all("<MouseWheel>"))
+        canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-2, "units"))
+        canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(2, "units"))
 
     def _rebuild_config_tab(self):
         profile = self._profile.get()
@@ -468,12 +477,12 @@ class FileSorterGUI:
         self._frames[name].pack(fill=BOTH, expand=(name in ("train", "config", "about")))
 
     # ============================================================ BROWSE
-    def _browse_sort(self, target):
-        if target == "Model":
+    def _browse_sort(self, key):
+        if key == "model":
             p = filedialog.askopenfilename(title=_("Select model"), filetypes=[("PKL", "*.pkl"), ("All", "*.*")])
             if p:
                 self._model_path.set(p)
-        elif target == "Input":
+        elif key == "input":
             p = filedialog.askdirectory(title=_("Select input directory"))
             if p:
                 self._input_path.set(p)

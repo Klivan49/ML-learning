@@ -1,10 +1,11 @@
 import os
+import re
 import joblib
 import pandas as pd
 from typing import Dict, List, Optional, Tuple
 
 from src.features.features import extract_all_features, get_feature_columns, detect_content_type, FILENAME_TEXT_COL, CONTENT_TEXT_COL
-from configs.config import CONFIG
+from configs.config import CONFIG, GENERAL, EDUCATION
 
 EDU_FOLDER_MAP = {
     "лабораторные": "Лабораторные",
@@ -18,6 +19,18 @@ EDU_FOLDER_MAP = {
 class FileClassifier:
     def __init__(self, model_path: str):
         self.model = joblib.load(model_path)
+        self._detect_profile()
+
+    def _detect_profile(self):
+        try:
+            classes = list(self.model.classes_)
+            is_edu = any(ord(c) > 127 for cls in classes for c in str(cls))
+            expected_profile = "education" if is_edu else "general"
+            if CONFIG.profile != expected_profile:
+                CONFIG.profile = expected_profile
+                CONFIG._apply_profile()
+        except Exception:
+            pass
 
     def predict_file(self, file_path: str) -> Tuple[str, Dict[str, float]]:
         feats = extract_all_features(file_path)
